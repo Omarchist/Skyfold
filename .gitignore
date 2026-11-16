@@ -1,0 +1,10 @@
+# Xcode
+build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+
+# Tooling output
+Tools/Blender/__pycache__/
+__pycache__/
+.DS_Store

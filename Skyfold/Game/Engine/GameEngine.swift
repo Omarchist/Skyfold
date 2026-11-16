@@ -1,0 +1,600 @@
+import RealityKit
+import SwiftUI
+
+/// The glue between the run's rules and the picture. It steps the 2D simulation, runs the phase
+/// timers (countdown, landing, airport), writes the live values into the session, turns rule
+/// events into sound and haptics, and hands a `RenderFrame` to the renderer every frame.
+///
+/// Created by `FlightView` as `@State` and driven by RealityKit's per-frame update event. Nothing
+/// here allocates per frame: values are copied into preallocated pools by the renderer.
+final class GameEngine {
+    let session: RunSession
+    let settings: GameSettings
+    /// The 2D sky reads this from its own timeline. Deliberately not observable.
+    let clock = BackdropClock()
+
+    private(set) var renderer: WorldRenderer?
+    private var subscriptions: [EventSubscription] = []
+
+    // Rules.
+    private var sim: FlightSimulation
+    private var autopilot = Autopilot()
+
+    // Serials and phase tracking.
+    private var seenLeg: Int
+    private var seenRevive: Int
+    private var lastPhase: RunPhase
+    private var firstLeg = true
+
+    // View.
+    private var viewWidth: Float = 0
+    private var viewHeight: Float = 0
+
+    // Clocks and motion.
+    private var animTime: Float = 0
+    private var scroll: Double = 0
+    private var speedNow: Float = 0
+    private var lastDx: Float = 0
+    private var scoreAcc: Double = 0
+    private var totalDist: Double = 0
+
+    // Countdown and takeoff.
+    private var countdownT: Float = 0
+    private var shownCountdown = 4
+    private var takeoffRun = true
+    private var takeoffMeters: Float = 0
+    private var queuedLane = 0
+
+    // Landing and airport.
+    private var landT: Float = 0
+    private var landStartSpeed: Float = 0
+    private var landStartY: Float = 0
+    private var landStartAnchor: Float = 0
+    private var destAnchor: Float = 400
+    private var originAnchor: Float = -400
+    private var seenChosen: Int?
+    private var doorT: Float = 0
+    private var originGate: Int?
+    private var rampUp: Float = 1
+
+    // Crash.
+    private var crash = CrashState()
+
+    // Nightness.
+    private var nightness: Double
+    private var nightTarget: Double
+    private var nightPoll: Float = 0
+    private var appliedNight: Double = -1
+
+    // Publishing.
+    private var publishTimer: Float = 0
+    private var fpsSmoothed: Float = 60
+    private var lastLandingSound = false
+
+    // The camera stays in the airport rig from the landing until the next takeoff run is under way.
+    private var airportCamera = false
+
+    private static let landingTime: Float = 2.5
+    private static let countdownTime: Float = 3
+
+    init(session: RunSession, settings: GameSettings) {
+        self.session = session
+        self.settings = settings
+        sim = FlightSimulation(config: FlightConfig(leg: session.leg, tuning: session.tuning))
+        seenLeg = session.legSerial
+        seenRevive = session.reviveSerial
+        lastPhase = session.phase
+        nightness = session.nightness
+        nightTarget = session.nightness
+    }
+
+    /// Fog from the Fog Bank curse. Debug builds can force it with the `HarnessFog` launch argument.
+    private var effectiveFog: Float {
+        #if DEBUG
+        return max(session.tuning.fog, Float(UserDefaults.standard.double(forKey: "HarnessFog")))
+        #else
+        return session.tuning.fog
+        #endif
+    }
+
+    // MARK: Setup
+
+    /// Builds the world and starts listening to the frame event. Called once from the RealityView.
+    func build(into content: inout RealityViewCameraContent) async {
+        guard renderer == nil else { return }
+        await ModelLibrary.shared.load()
+        let r = WorldRenderer(settings: settings, skin: session.skin)
+        r.attach(to: &content)
+        renderer = r
+        if viewWidth > 1 { r.setView(width: viewWidth, height: viewHeight, snap: true) }
+        r.applyPalette(Palette.at(nightness: nightness), nightness: nightness)
+        beginLeg(first: true)
+        let sub = content.subscribe(to: SceneEvents.Update.self, on: nil, componentType: nil) { [weak self] event in
+            self?.update(rawDt: Float(event.deltaTime))
+        }
+        subscriptions.append(sub)
+    }
+
+    func setViewSize(width: Float, height: Float) {
+        let snap = viewWidth < 1
+        viewWidth = width
+        viewHeight = height
+        renderer?.setView(width: width, height: height, snap: snap)
+    }
+
+    /// Resets the world for the leg the session now holds. `first`: the run's very first leg.
+    private func beginLeg(first: Bool) {
+        guard let r = renderer else { return }
+        let leg = session.leg
+        let cfg = FlightConfig(leg: leg, tuning: session.tuning)
+        let v0 = max(leg.speed(atProgress: 0), 1)
+        // The takeoff run covers 1.5 x v0 meters (speed eases 0 to v0 over the countdown), so the
+        // leg's zero lands exactly where the countdown ends.
+        takeoffMeters = 1.5 * v0
+        sim.reset(config: cfg, startDistance: -Double(takeoffMeters), lane: World.middleLane,
+                  seed: UInt64.random(in: 1...UInt64.max))
+        autopilot.reset()
+        session.lane = World.middleLane
+        queuedLane = 0
+        crash = CrashState()
+        takeoffRun = true
+        countdownT = 0
+        shownCountdown = 4
+        landT = 0
+        doorT = 0
+        originGate = first ? nil : seenChosen
+        seenChosen = nil
+        airportCamera = false
+        r.camera.airportTarget = 0
+        r.setLeg(from: leg.from, to: leg.to, swap: !first, seed: UInt32(truncatingIfNeeded: session.legsCompleted &* 7 &+ leg.toRoute &* 13 &+ 3))
+        r.setFog(effectiveFog)
+        r.setGateResult(chosen: nil, kind: nil)
+        originAnchor = first ? 7 : originAnchor
+        if !first { originAnchor = 0 }
+        destAnchor = destinationAnchor()
+        speedNow = 0
+        firstLeg = false
+    }
+
+    /// Where the gate centre is, in meters ahead of the plane, for the current leg distance.
+    private func destinationAnchor() -> Float {
+        let leg = session.leg
+        let x0 = leg.speed(atProgress: 1) * Self.landingTime * 0.5
+        return Float(leg.length - sim.distance) + x0
+    }
+
+    // MARK: Input
+
+    /// +1 for up, -1 for down, as the player sees it (the Mirror Sky curse flips it here).
+    func requestLaneChange(_ direction: Int) {
+        let d = session.tuning.invertControls ? -direction : direction
+        switch session.phase {
+        case .flying:
+            sim.setTargetLane(sim.plane.lane + d)
+        case .countdown:
+            // One change may be queued during the last second of the countdown.
+            if session.countdown == 1 { queuedLane = d }
+        default:
+            break
+        }
+    }
+
+    // MARK: Frame
+
+    func update(rawDt: Float) {
+        guard let r = renderer else { return }
+        let dt = min(max(rawDt, 0), 1.0 / 30.0)
+        trackFPS(rawDt)
+
+        if session.legSerial != seenLeg {
+            seenLeg = session.legSerial
+            beginLeg(first: false)
+        }
+        if session.reviveSerial != seenRevive {
+            seenRevive = session.reviveSerial
+            revive()
+        }
+
+        let phase = session.phase
+        if phase != lastPhase {
+            enter(phase, from: lastPhase)
+            lastPhase = phase
+        }
+
+        var animDt = dt
+        lastDx = 0
+        switch phase {
+        case .paused:
+            animDt = 0
+        case .countdown:
+            tickCountdown(dt)
+        case .flying:
+            tickFlying(dt)
+        case .landing:
+            tickLanding(dt)
+        case .airport:
+            tickAirport(dt)
+        case .crashed, .gameOver:
+            tickCrash(dt)
+        }
+        animTime += animDt
+
+        updateNightness(dt)
+        publish(dt)
+
+        clock.scroll = scroll
+        clock.speed = speedNow
+
+        var f = RenderFrame()
+        f.dt = animDt
+        f.cameraDt = rawDt > 0.25 ? 0.25 : rawDt
+        f.time = animTime
+        f.scroll = scroll
+        f.dx = lastDx
+        f.speed = speedNow
+        f.fog = effectiveFog
+        f.plane = planePose()
+        f.planeVy = sim.plane.vy
+        f.destAnchor = destAnchor
+        f.originAnchor = originAnchor
+        f.destReveal = destinationReveal()
+        f.gateChosen = session.gateOffer?.chosenIndex ?? (phase == .airport ? seenChosen : nil)
+        f.originGate = originGate
+        f.doorOpen = smooth(doorT / 0.8)
+        f.airportCamera = airportCamera
+        r.render(f, sim: sim)
+    }
+
+    // MARK: Phase entry
+
+    private func enter(_ phase: RunPhase, from: RunPhase) {
+        switch phase {
+        case .countdown:
+            if from != .countdown {
+                countdownT = 0
+                shownCountdown = 4
+                if from == .paused { takeoffRun = false }
+            }
+        case .flying:
+            takeoffRun = false
+            // Starting from rest (after a pause or a revive): ease the world up to speed.
+            rampUp = speedNow < 0.5 * session.leg.speed(atProgress: 0) ? 0 : 1
+        case .airport:
+            speedNow = 0
+        default:
+            break
+        }
+    }
+
+    // MARK: Countdown
+
+    private func tickCountdown(_ dt: Float) {
+        countdownT += dt
+        let remaining = 3 - Int(countdownT)
+        if remaining != shownCountdown, remaining >= 1 {
+            shownCountdown = remaining
+            if session.countdown != remaining { session.countdown = remaining }
+            Services.sound.play(.countdown)
+            Services.haptics.play(.selection)
+        }
+        if takeoffRun {
+            // Speed eases from rest to the leg's opening speed; obstacles are placed but harmless.
+            let v0 = session.leg.speed(atProgress: 0)
+            speedNow = v0 * smooth(countdownT / Self.countdownTime)
+            if airportCamera, countdownT > 0.2 { airportCamera = false }
+            advanceWorld(dt: dt, spawning: true, collisions: false)
+        } else {
+            speedNow = 0
+        }
+        if countdownT >= Self.countdownTime {
+            session.beginFlying()
+            takeoffRun = false
+            Services.sound.play(.takeoff)
+            Services.haptics.play(.success)
+            if queuedLane != 0 {
+                sim.setTargetLane(sim.plane.lane + queuedLane)
+                queuedLane = 0
+            }
+        }
+    }
+
+    // MARK: Flying
+
+    private func tickFlying(_ dt: Float) {
+        let leg = session.leg
+        let progress = min(1, max(0, sim.distance) / max(leg.length, 1))
+        rampUp = min(1, rampUp + dt / 0.7)
+        let speed = leg.speed(atProgress: progress) * smooth(rampUp)
+        speedNow = speed
+        if DebugFlags.autopilot, let lane = autopilot.decide(sim, speed: speed, dt: dt) {
+            sim.setTargetLane(lane)
+        }
+        advanceWorld(dt: dt, spawning: true, collisions: true)
+        handleEvents()
+        guard session.phase == .flying else { return }
+        if sim.distance >= leg.length {
+            startLanding()
+        }
+    }
+
+    /// Steps the rules and moves the world by one frame. Distance and score count only on the leg itself.
+    private func advanceWorld(dt: Float, spawning: Bool, collisions: Bool) {
+        let before = sim.distance
+        sim.step(dt: dt, speed: speedNow, spawning: spawning, collisions: collisions)
+        let dx = Float(sim.distance - before)
+        lastDx = dx
+        scroll += Double(dx)
+        destAnchor = destinationAnchor()
+        originAnchor -= dx
+        if session.phase == .flying {
+            let counted = max(0, sim.distance) - max(0, before)
+            if counted > 0 {
+                totalDist += counted
+                scoreAcc += counted * session.scoreMultiplier
+            }
+        }
+    }
+
+    private func handleEvents() {
+        let events = sim.events
+        for e in events {
+            switch e {
+            case .laneChanged(let lane):
+                session.lane = lane
+                Services.sound.play(.laneSwitch)
+                Services.haptics.play(.laneSwitch)
+            case .starCollected:
+                session.stars += 1
+                scoreAcc += Double(session.starPoints)
+                Services.sound.play(.star)
+                Services.haptics.play(.star)
+            case .nearMiss:
+                Services.haptics.play(.selection)
+            case .hit(let slot):
+                flushValues()
+                if session.registerHit() {
+                    Services.sound.play(.shieldBreak)
+                    Services.haptics.play(.shield)
+                    sim.removeObstacle(slot: slot)
+                    sim.invulnerability = 1.0
+                    renderer?.firePopRing()
+                    renderer?.kickCamera(0.5)
+                } else {
+                    Services.sound.play(.crash)
+                    Services.haptics.play(.crash)
+                    crash.begin(y: sim.plane.y, tilt: sim.plane.tilt)
+                    renderer?.kickCamera(1)
+                    return
+                }
+            }
+        }
+    }
+
+    // MARK: Landing
+
+    private func startLanding() {
+        let leg = session.leg
+        landT = 0
+        landStartSpeed = leg.speed(atProgress: 1)
+        landStartY = sim.plane.y
+        landStartAnchor = destAnchor
+        speedNow = landStartSpeed
+        airportCamera = true
+        flushValues()
+        session.beginLanding()
+        Services.sound.play(.landing)
+        Services.haptics.play(.success)
+    }
+
+    private func tickLanding(_ dt: Float) {
+        landT += dt
+        let T = Self.landingTime
+        let u = min(landT / T, 1)
+        // Linear braking: the world covers v0 * T / 2 meters, and the gates arrive at the plane.
+        speedNow = landStartSpeed * (1 - u)
+        let before = sim.distance
+        sim.step(dt: dt, speed: speedNow, spawning: false, collisions: false)
+        let dx = Float(sim.distance - before)
+        lastDx = dx
+        scroll += Double(dx)
+        originAnchor -= dx
+        destAnchor = landStartAnchor - landStartSpeed * T * (u - u * u * 0.5)
+        if landT >= T {
+            destAnchor = landStartAnchor - landStartSpeed * T * 0.5
+            speedNow = 0
+            session.completeLanding()
+        }
+    }
+
+    // MARK: Airport
+
+    private func tickAirport(_ dt: Float) {
+        speedNow = 0
+        airportCamera = true
+        let chosen = session.gateOffer?.chosenIndex
+        if chosen != seenChosen {
+            seenChosen = chosen
+            if let c = chosen, let offer = session.gateOffer {
+                renderer?.setGateResult(chosen: c, kind: offer.options[c].kind)
+                doorT = 0
+                Services.sound.play(.gateOpen)
+                Services.haptics.play(.gate)
+            }
+        }
+        if chosen != nil { doorT += dt }
+    }
+
+    // MARK: Crash and revive
+
+    private func tickCrash(_ dt: Float) {
+        crash.step(dt: dt)
+    }
+
+    private func revive() {
+        crash = CrashState()
+        sim.clearObstacles(within: 25)
+        sim.invulnerability = 2
+        sim.placePlane(lane: sim.plane.lane)
+        session.lane = sim.plane.lane
+        takeoffRun = false
+        speedNow = 0
+    }
+
+    // MARK: Pose
+
+    private func planePose() -> PlanePose {
+        var p = PlanePose()
+        let phase = session.phase
+        let tilt = sim.plane.tilt
+        var y = sim.plane.y
+        p.pitch = tilt * 0.34
+        p.roll = sinf(animTime * 1.7) * 0.035 - tilt * 0.08
+        y += sinf(animTime * 2.3) * 0.025
+        let groundY = World.groundY + 0.2
+
+        if crash.active {
+            return crash.pose(base: p, groundY: groundY)
+        }
+        if phase == .countdown, takeoffRun {
+            // Rolls along the runway, then lifts off into its lane.
+            let u = countdownT / Self.countdownTime
+            let rise = smooth((u - 0.4) / 0.6)
+            y = groundY + (sim.plane.y - groundY) * rise
+            p.pitch = sinf(.pi * rise) * 0.3 + tilt * 0.34
+            p.roll = 0
+            p.shadow = 1
+        } else if phase == .landing {
+            let u = min(landT / Self.landingTime, 1)
+            let down = smooth(powf(u, 0.85))
+            y = landStartY + (groundY - landStartY) * down
+            p.pitch = -0.16 * (1 - u) + 0.12 * sinf(.pi * min(u * 1.25, 1))
+            p.roll = 0
+        } else if phase == .airport || (phase == .gameOver && lastAirportish) {
+            y = groundY
+            p.pitch = 0
+            p.roll = 0
+        }
+        p.y = y
+        if sim.invulnerability > 0, phase == .flying || phase == .countdown {
+            p.visible = Int(animTime * 11) % 2 == 0
+        }
+        return p
+    }
+
+    private var lastAirportish: Bool { session.arrival != nil }
+
+    private func destinationReveal() -> Float {
+        let leg = session.leg
+        let window = Float(min(max(leg.length * 0.2, 70), 170))
+        let toGo = Float(leg.length - sim.distance)
+        if session.phase == .landing || session.phase == .airport { return 1 }
+        return smooth((window - toGo) / (window * 0.75))
+    }
+
+    // MARK: Nightness
+
+    private func updateNightness(_ dt: Float) {
+        nightPoll -= dt
+        if nightPoll <= 0 {
+            nightPoll = 0.25
+            nightTarget = session.targetNightness()
+        }
+        let step = Double(dt) * 0.3
+        nightness += min(max(nightTarget - nightness, -step), step)
+        if abs(nightness - appliedNight) > 0.01 || appliedNight < 0 {
+            appliedNight = nightness
+            if abs(session.nightness - nightness) > 0.0001 { session.nightness = nightness }
+            renderer?.applyPalette(Palette.at(nightness: nightness), nightness: nightness)
+        }
+    }
+
+    // MARK: Live values
+
+    private func trackFPS(_ rawDt: Float) {
+        guard rawDt > 0 else { return }
+        fpsSmoothed += (min(1 / rawDt, 120) - fpsSmoothed) * 0.04
+    }
+
+    /// Writes the live values into the session, at most 15 times a second and only when they moved.
+    private func publish(_ dt: Float) {
+        publishTimer += dt
+        guard publishTimer >= 1.0 / 15.0 else { return }
+        publishTimer = 0
+        flushValues()
+        if settings.showFPS {
+            let v = Int(fpsSmoothed.rounded())
+            if session.fps != v { session.fps = v }
+        }
+    }
+
+    private func flushValues() {
+        let d = max(0, sim.distance)
+        if abs(session.legDistance - d) > 0.05 { session.legDistance = d }
+        if abs(session.totalDistance - totalDist) > 0.05 { session.totalDistance = totalDist }
+        let s = Int(scoreAcc)
+        if session.score != s { session.score = s }
+        let sp = (speedNow * 20).rounded() / 20
+        if abs(session.speed - sp) > 0.01 { session.speed = sp }
+    }
+
+    private func smooth(_ x: Float) -> Float {
+        let t = min(max(x, 0), 1)
+        return t * t * (3 - 2 * t)
+    }
+}
+
+// MARK: - Crash animation
+
+/// The tumble and crumple when the plane hits something with no shield left.
+struct CrashState {
+    private(set) var active = false
+    private var t: Float = 0
+    private var y0: Float = 0
+    private var vy: Float = 0
+    private var spin: Float = 0
+    private var roll: Float = 0
+    private var yawRate: Float = 0
+    private var yaw: Float = 0
+
+    mutating func begin(y: Float, tilt: Float) {
+        active = true
+        t = 0
+        y0 = y
+        vy = 2.2
+        spin = 11
+        roll = 0
+        yawRate = 2.4
+        yaw = 0
+    }
+
+    mutating func step(dt: Float) {
+        guard active else { return }
+        t += dt
+        vy -= 16 * dt
+        y0 += vy * dt
+        let floorY = World.groundY + 0.2
+        if y0 < floorY {
+            y0 = floorY
+            vy = abs(vy) > 2 ? -vy * 0.28 : 0
+            spin *= 0.55
+            yawRate *= 0.5
+        }
+        roll += spin * dt
+        spin *= max(0, 1 - 1.5 * dt)
+        yaw += yawRate * dt
+    }
+
+    func pose(base: PlanePose, groundY: Float) -> PlanePose {
+        var p = base
+        let k = min(t / 0.9, 1)
+        p.y = y0
+        p.pitch = -0.2 - 0.9 * k
+        p.roll = roll
+        p.yaw = yaw * 0.35
+        // Crumpled: shorter, taller, a little squashed.
+        let s = k * k * (3 - 2 * k)
+        p.scale = [1 - 0.28 * s, 1 + 0.25 * s, 1 - 0.12 * s]
+        p.shadow = 1
+        return p
+    }
+}
