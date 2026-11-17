@@ -28,6 +28,7 @@ struct NearMissTag: View {
                 .fixedSize()
         }
         .foregroundStyle(ink)
+        .limitedTypeSize()
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
         .background(shape.fill(palette.paper.color))

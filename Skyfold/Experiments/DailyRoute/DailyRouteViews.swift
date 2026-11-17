@@ -9,58 +9,98 @@ struct DailyRouteTicket: View {
 
     @Environment(\.palette) private var palette
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var route = DailyRoute.today
     @State private var best = DailyBestStore.shared.best(for: .today)
 
     private let stubWidth: CGFloat = 116
 
     var body: some View {
-        let shape = TicketShape(cornerRadius: 4, notch: .vertical(fromTrailing: stubWidth), notchRadius: 7)
-        HStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 1) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text("Daily route")
-                        .signage(9.5, weight: .heavy)
-                        .foregroundStyle(palette.accent.color)
-                    Text(route.shortDate)
-                        .font(.ticket(11, weight: .bold))
-                        .tracking(1)
-                        .foregroundStyle(palette.inkSoft.color)
-                }
-                Text("\(route.origin.code) → \(route.destination.code)")
-                    .font(.ticket(20, weight: .bold))
-                    .foregroundStyle(palette.ink.color)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                Text(bestLine)
-                    .signage(9.5, weight: .semibold)
-                    .foregroundStyle(palette.inkSoft.color)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            .padding(.leading, 14)
-            .padding(.trailing, 8)
-            .padding(.vertical, 7)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        // At the accessibility sizes the stub no longer fits beside the text: it goes underneath.
+        Group {
+            if typeSize.isAccessibilitySize { stacked } else { sideBySide }
+        }
+        .accessibilityElement(children: .contain)
+        .onAppear(perform: refresh)
+        .onChange(of: scenePhase) { _, phase in if phase == .active { refresh() } }
+    }
 
-            Button { onFly(route) } label: {
-                Text("Fly today's route")
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-            }
-            .buttonStyle(SecondaryButtonStyle(size: .compact, fullWidth: true))
-            .padding(.horizontal, 10)
-            .frame(width: stubWidth - 1)
-            // Behind the stub, so the dashed line follows the ticket's height instead of setting it.
-            .background(alignment: .leading) { Perforation(vertical: true).padding(.vertical, 8) }
-            .accessibilityHint("Starts today's fixed route from \(route.origin.name)")
+    private var sideBySide: some View {
+        let shape = TicketShape(cornerRadius: 4, notch: .vertical(fromTrailing: stubWidth), notchRadius: 7)
+        return HStack(spacing: 0) {
+            info
+                .padding(.leading, 14)
+                .padding(.trailing, 8)
+                .padding(.vertical, 7)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            flyButton
+                .padding(.horizontal, 10)
+                .frame(width: stubWidth - 1)
+                // Behind the stub, so the dashed line follows the ticket's height instead of setting it.
+                .background(alignment: .leading) { Perforation(vertical: true).padding(.vertical, 8) }
         }
         .background(shape.fill(palette.paper.color))
         .overlay(shape.stroke(palette.paperEdge.color, lineWidth: 1))
         .printShadow(shape)
-        .accessibilityElement(children: .contain)
-        .onAppear(perform: refresh)
-        .onChange(of: scenePhase) { _, phase in if phase == .active { refresh() } }
+    }
+
+    private var stacked: some View {
+        let shape = RoundedRectangle(cornerRadius: 4, style: .continuous)
+        return VStack(alignment: .leading, spacing: 0) {
+            info
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Perforation().padding(.horizontal, 10)
+            flyButton
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+        }
+        .background(shape.fill(palette.paper.color))
+        .overlay(shape.stroke(palette.paperEdge.color, lineWidth: 1))
+        .printShadow(shape)
+    }
+
+    private var info: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) { dailyTitle; dailyDate }
+                VStack(alignment: .leading, spacing: 1) { dailyTitle; dailyDate }
+            }
+            Text("\(route.origin.code) → \(route.destination.code)")
+                .font(.ticket(20, weight: .bold))
+                .foregroundStyle(palette.ink.color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(bestLine)
+                .signage(9.5, weight: .semibold)
+                .foregroundStyle(palette.inkSoft.color)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var dailyTitle: some View {
+        Text("Daily route")
+            .signage(9.5, weight: .heavy)
+            .foregroundStyle(palette.accent.color)
+            .lineLimit(1)
+    }
+
+    private var dailyDate: some View {
+        Text(route.shortDate)
+            .font(.ticket(11, weight: .bold))
+            .tracking(1)
+            .foregroundStyle(palette.inkSoft.color)
+            .lineLimit(1)
+    }
+
+    private var flyButton: some View {
+        Button { onFly(route) } label: {
+            Text("Fly today's route")
+                .multilineTextAlignment(.leading)
+        }
+        .buttonStyle(SecondaryButtonStyle(size: .compact, fullWidth: true))
+        .accessibilityHint("Starts today's fixed route from \(route.origin.name)")
     }
 
     /// The date can turn over while the app waits on the menu.

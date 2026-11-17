@@ -15,10 +15,13 @@ struct SettingsView: View {
 /// The form itself, in two columns when the page is wide.
 private struct LibrarySettingsForm: View {
     let model: AppModel
-    @Environment(\.isLandscape) private var wide
+    @Environment(\.isLandscape) private var landscape
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         let settings = model.settings
+        // Two columns only while the text is small enough; wrapped rows overlapped in them.
+        let wide = landscape && !typeSize.isAccessibilitySize
         Group {
             if wide {
                 HStack(alignment: .top, spacing: 36) {

@@ -70,6 +70,7 @@ private struct GustSign: View {
             }
             .foregroundStyle(ink)
         }
+        .limitedTypeSize()
         .padding(.horizontal, 9)
         .padding(.vertical, 6)
         .background(shape.fill(palette.paper.color))

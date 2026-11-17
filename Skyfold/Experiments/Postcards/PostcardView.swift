@@ -74,6 +74,8 @@ struct PostcardFront: View {
             .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
             .overlay(shape.strokeBorder(light.edge, lineWidth: 0.8))
         }
+        // A scaled drawing: its type follows the card width, not the text-size setting.
+        .dynamicTypeSize(.large)
         .aspectRatio(3 / 2, contentMode: .fit)
         .printShadow(shape, offset: shadow)
         .accessibilityElement(children: .ignore)
@@ -184,6 +186,8 @@ struct PostcardBack: View {
             .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
             .overlay(shape.strokeBorder(light.edge, lineWidth: 0.8))
         }
+        // A scaled drawing: its type follows the card width, not the text-size setting.
+        .dynamicTypeSize(.large)
         .aspectRatio(3 / 2, contentMode: .fit)
         .printShadow(shape, offset: shadow)
         .accessibilityElement(children: .ignore)
