@@ -203,14 +203,22 @@ private struct LibraryFlaps: View {
             }
         }
         .opacity(dim ? 0.55 : 1)
+        // Fixed-width cells: they follow the text size only a little (about 1.12x).
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
     }
 }
 
 private struct LibraryFlapCell: View {
     let char: Character?
-    let size: CGFloat
+    @ScaledMetric private var size: CGFloat
     let color: Color
     @Environment(\.palette) private var palette
+
+    init(char: Character?, size: CGFloat, color: Color) {
+        self.char = char
+        _size = ScaledMetric(wrappedValue: size, relativeTo: .footnote)
+        self.color = color
+    }
 
     var body: some View {
         let w = size * 0.66 + 5
@@ -223,7 +231,7 @@ private struct LibraryFlapCell: View {
             }
             if let char, char != " " {
                 Text(String(char))
-                    .font(.ticket(size, weight: .bold))
+                    .font(.system(size: size, weight: .bold, design: .monospaced))
                     .foregroundStyle(color)
             }
             Rectangle().fill(palette.boardBackground.color).frame(height: 1.2)

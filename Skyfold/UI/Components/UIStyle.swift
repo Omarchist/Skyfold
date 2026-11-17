@@ -184,7 +184,7 @@ struct Glyph: View {
 
     var body: some View {
         Image(systemName: name)
-            .font(.system(size: size, weight: .medium))
+            .font(.skyfold(size, weight: .medium))
             .accessibilityHidden(true)
     }
 }
@@ -193,9 +193,66 @@ struct Glyph: View {
 
 extension Text {
     /// Signage style: uppercase, tracked, small.
-    func signage(_ size: CGFloat = 11, weight: Font.Weight = .semibold) -> some View {
+    func signage(_ size: CGFloat = 11, weight: Font.Weight = .semibold, tracking: CGFloat = 1.5) -> some View {
         self.textCase(.uppercase)
             .font(.skyfold(size, weight: weight))
-            .tracking(1.5)
+            .tracking(tracking)
+    }
+}
+
+/// Puts its children side by side while each one's natural width fits its share of the row
+/// (`equalColumns`) or all of them fit together, and one under another otherwise. Unlike
+/// `ViewThatFits`, the decision is measured from the unconstrained size of every child, so a
+/// word is never squeezed or broken.
+struct FitStack: Layout {
+    var spacing: CGFloat = 8
+    var rowSpacing: CGFloat = 8
+    var equalColumns = false
+
+    private func sideBySide(_ subviews: Subviews, width: CGFloat) -> Bool {
+        guard width.isFinite else { return true }
+        let ideals = subviews.map { $0.sizeThatFits(.unspecified).width }
+        let gaps = spacing * CGFloat(max(subviews.count - 1, 0))
+        if equalColumns {
+            let column = (width - gaps) / CGFloat(max(subviews.count, 1))
+            return ideals.allSatisfy { $0 <= column }
+        }
+        return ideals.reduce(0, +) + gaps <= width
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? .infinity
+        if sideBySide(subviews, width: width) {
+            let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+            let used = sizes.map(\.width).reduce(0, +) + spacing * CGFloat(max(subviews.count - 1, 0))
+            return CGSize(width: equalColumns && width.isFinite ? width : used,
+                          height: sizes.map(\.height).max() ?? 0)
+        }
+        let sizes = subviews.map { $0.sizeThatFits(ProposedViewSize(width: width, height: nil)) }
+        let height = sizes.map(\.height).reduce(0, +) + rowSpacing * CGFloat(max(subviews.count - 1, 0))
+        return CGSize(width: width.isFinite ? width : (sizes.map(\.width).max() ?? 0), height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        if sideBySide(subviews, width: bounds.width) {
+            let gaps = spacing * CGFloat(max(subviews.count - 1, 0))
+            let column = (bounds.width - gaps) / CGFloat(max(subviews.count, 1))
+            var x = bounds.minX
+            for view in subviews {
+                let size = view.sizeThatFits(.unspecified)
+                let w = equalColumns ? column : size.width
+                view.place(at: CGPoint(x: x, y: bounds.minY), anchor: .topLeading,
+                           proposal: ProposedViewSize(width: w, height: nil))
+                x += w + spacing
+            }
+        } else {
+            var y = bounds.minY
+            for view in subviews {
+                let size = view.sizeThatFits(ProposedViewSize(width: bounds.width, height: nil))
+                view.place(at: CGPoint(x: bounds.minX, y: y), anchor: .topLeading,
+                           proposal: ProposedViewSize(width: bounds.width, height: nil))
+                y += size.height + rowSpacing
+            }
+        }
     }
 }

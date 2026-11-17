@@ -163,22 +163,72 @@ extension EnvironmentValues {
     @Entry var palette: Palette = .day
 }
 
-extension Font {
+/// A type spec that follows the user's text size. A plain `Font` cannot read the environment,
+/// so `.font(_: SkyFont)` (below) resolves the size per view with `@ScaledMetric`, which reacts
+/// live to a change of the Dynamic Type setting and respects `.dynamicTypeSize(...limit)`.
+/// At the default size (Large) the result is exactly `size`.
+///
+/// Scaling: text that can reflow (body, notes, rows) scales fully. Text inside fixed paper
+/// shapes (HUD ticket, countdown slip, gate letters, wordmark, split-flap board, big score)
+/// sits under `.limitedTypeSize()`, which caps the environment at `xxxLarge` (about 1.3x).
+struct SkyFont {
+    var size: CGFloat
+    var weight: Font.Weight
+    var design: Font.Design
+    var isItalic = false
+
+    func italic() -> SkyFont { var f = self; f.isItalic = true; return f }
+
     /// Body and controls: the plain system face. Deliberately not Rounded.
-    static func skyfold(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight, design: .default)
+    static func skyfold(_ size: CGFloat, weight: Font.Weight = .regular) -> SkyFont {
+        SkyFont(size: size, weight: weight, design: .default)
     }
 
     /// Titles, city names, the wordmark: New York (the system serif), like a printed
     /// timetable or guidebook heading.
-    static func display(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
-        .system(size: size, weight: weight, design: .serif)
+    static func display(_ size: CGFloat, weight: Font.Weight = .semibold) -> SkyFont {
+        SkyFont(size: size, weight: weight, design: .serif)
     }
 
     /// Anything a machine would print: scores, distances, flight codes, gate letters,
     /// times. Monospaced, like a boarding pass or a departures board.
-    static func ticket(_ size: CGFloat, weight: Font.Weight = .medium) -> Font {
-        .system(size: size, weight: weight, design: .monospaced)
+    static func ticket(_ size: CGFloat, weight: Font.Weight = .medium) -> SkyFont {
+        SkyFont(size: size, weight: weight, design: .monospaced)
     }
+
+    /// The text style whose scaling curve fits this size (big type grows less, like Apple's styles).
+    fileprivate var style: Font.TextStyle {
+        switch size {
+        case ..<12: .caption2
+        case ..<14: .footnote
+        case ..<18: .body
+        case ..<24: .title3
+        case ..<32: .title2
+        default: .largeTitle
+        }
+    }
+}
+
+private struct SkyFontModifier: ViewModifier {
+    let spec: SkyFont
+    @ScaledMetric private var size: CGFloat
+
+    init(_ spec: SkyFont) {
+        self.spec = spec
+        _size = ScaledMetric(wrappedValue: spec.size, relativeTo: spec.style)
+    }
+
+    func body(content: Content) -> some View {
+        let font = Font.system(size: size, weight: spec.weight, design: spec.design)
+        return content.font(spec.isItalic ? font.italic() : font)
+    }
+}
+
+extension View {
+    /// Sets a Skyfold type spec that scales with the text-size setting.
+    func font(_ spec: SkyFont) -> some View { modifier(SkyFontModifier(spec)) }
+
+    /// For display-like text in fixed paper shapes: grows with the setting, but by about 1.3x at most.
+    func limitedTypeSize() -> some View { dynamicTypeSize(...DynamicTypeSize.xxxLarge) }
 }
 #endif

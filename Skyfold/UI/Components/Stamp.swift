@@ -44,7 +44,7 @@ struct PassportStamp: View {
             let advance = fontSize * 0.62 + 1.6
             let arcRadius = r * 0.9 - fontSize * 0.95
             let step = advance / arcRadius
-            let font = Font.ticket(fontSize, weight: .bold)
+            let font = Font.system(size: fontSize, weight: .bold, design: .monospaced)
 
             func arc(_ text: String, upper: Bool) {
                 let chars = Array(text)

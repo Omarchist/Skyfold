@@ -50,6 +50,7 @@ struct FlightCountdown: View {
         // Portrait: a block in the HUD column. Landscape: centered, to the right of the plane.
         .frame(maxWidth: landscape ? .infinity : nil, maxHeight: landscape ? .infinity : nil,
                alignment: landscape ? .center : .leading)
+        .limitedTypeSize()
         .allowsHitTesting(false)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(n)")

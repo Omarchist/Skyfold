@@ -32,7 +32,7 @@ struct AirportArrivalLayer: View {
         ViewThatFits(in: .vertical) {
             content
             ScrollView(showsIndicators: false) { content }
-                .defaultScrollAnchor(.bottom)
+                .defaultScrollAnchor(metrics.isLandscape ? .top : .bottom)
         }
         .padding(metrics.edgeInsets)
         .frame(width: metrics.size.width, height: metrics.size.height, alignment: .bottomLeading)
@@ -136,22 +136,25 @@ struct AirportPassportCard: View {
                 .font(.ticket(12, weight: .medium))
                 .tracking(1)
                 .foregroundStyle(palette.inkSoft.color)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
             Text(city.name)
                 .font(.display(landscape ? 42 : 38, weight: .bold))
                 .foregroundStyle(palette.ink.color)
                 .lineLimit(2)
                 .minimumScaleFactor(0.6)
                 .fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: 8) {
+            // The tag moves under the country when the two do not fit on one line.
+            FitStack(spacing: 8, rowSpacing: 6) {
                 Text(city.country)
                     .signage(12)
                     .foregroundStyle(palette.inkSoft.color)
+                    .lineLimit(1)
                 if arrival.firstVisit {
                     Text("First visit")
                         .signage(10)
                         .foregroundStyle(palette.accent.color)
+                        .lineLimit(1)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
                         .overlay(Rectangle().strokeBorder(palette.accent.color, lineWidth: 1))

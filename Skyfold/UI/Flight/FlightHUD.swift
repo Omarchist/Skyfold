@@ -71,6 +71,7 @@ struct FlightHUD: View {
                     .allowsHitTesting(false)
             }
         }
+        .limitedTypeSize()
     }
 }
 

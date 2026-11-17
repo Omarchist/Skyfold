@@ -101,7 +101,7 @@ private struct PaperButtonFace: View {
     @Environment(\.palette) private var palette
     @Environment(\.isEnabled) private var isEnabled
 
-    private var font: Font {
+    private var font: SkyFont {
         switch size {
         case .compact: .skyfold(13, weight: .semibold)
         case .regular: .skyfold(16, weight: .semibold)

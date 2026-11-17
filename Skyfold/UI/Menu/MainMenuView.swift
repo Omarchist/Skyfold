@@ -128,9 +128,10 @@ struct MainMenuView: View {
                     .foregroundStyle(palette.ink.color)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
+                    .limitedTypeSize()
                     .accessibilityAddTraits(.isHeader)
                 Spacer(minLength: 4)
-                ParAvionLabel()
+                ParAvionLabel().limitedTypeSize()
                     .rotationEffect(.degrees(-4))
                     .padding(.top, landscape ? 4 : 12)
             }
@@ -141,6 +142,7 @@ struct MainMenuView: View {
             Text("One sheet of paper. Ten cities.")
                 .font(.display(landscape ? 14 : 16, weight: .regular).italic())
                 .foregroundStyle(palette.inkSoft.color)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -177,6 +179,7 @@ struct MainMenuView: View {
             }
         }
         .buttonStyle(PrimaryButtonStyle(size: .large, fullWidth: true))
+        .limitedTypeSize()
         .accessibilityLabel("Fly")
         .accessibilityHint("Starts a flight from \(Route.city(model.settings.selectedAirport).name)")
     }
