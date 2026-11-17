@@ -116,6 +116,7 @@ struct AirportGateLayer: View {
             Text("Pick a gate.")
                 .font(.display(metrics.isLandscape ? 22 : 25, weight: .bold))
                 .foregroundStyle(palette.ink.color)
+                .accessibilityAddTraits(.isHeader)
             Text("One is a blessing, one is a curse.")
                 .font(.skyfold(metrics.isLandscape ? 14 : 15, weight: .medium))
                 .foregroundStyle(palette.inkSoft.color)

@@ -92,17 +92,18 @@ struct MainMenuView: View {
 
                 VStack(spacing: 0) {
                     ScrollView {
-                        VStack(spacing: 14) {
-                            MenuBoardingPass(settings: model.settings, progress: model.progress,
-                                             compact: true, openPicker: openPicker)
-                                .rotationEffect(.degrees(-0.9))
-                            flyButton
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.top, 8)
-                        .padding(.bottom, 12)
+                        MenuBoardingPass(settings: model.settings, progress: model.progress,
+                                         compact: true, openPicker: openPicker)
+                            .rotationEffect(.degrees(-0.9))
+                            .padding(.horizontal, 12)
+                            .padding(.top, 8)
+                            .padding(.bottom, 10)
                     }
                     .scrollBounceBehavior(.basedOnSize)
+                    // Fly stays put above the sign; a short phone scrolls the pass, never the key.
+                    flyButton
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 10)
                     MenuSignBar(items: signItems)
                 }
                 .frame(width: min(430, geo.size.width * 0.47))

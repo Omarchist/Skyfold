@@ -66,6 +66,7 @@ struct FlightCrashedOverlay: View {
                     Text("Second Wind")
                         .font(.display(landscape ? 32 : 38))
                         .foregroundStyle(palette.ink.color)
+                        .accessibilityAddTraits(.isHeader)
                     Text("Went down hard. Smooth the creases out and keep flying?")
                         .font(.display(16, weight: .regular).italic())
                         .foregroundStyle(palette.ink.color)

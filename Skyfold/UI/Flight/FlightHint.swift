@@ -57,6 +57,11 @@ struct FlightHint: View {
         .accessibilityElement(children: .contain)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.6), value: visible)
         .onChange(of: session.phase, initial: true) { _, phase in
+            // The hint belongs to the air. A pause, crash, airport or game over card replaces it.
+            if visible, phase != .flying, phase != .countdown {
+                hideTask?.cancel()
+                visible = false
+            }
             guard phase == .flying, !started, settings.showHints,
                   progress.data.runsPlayed < Self.hintedRuns else { return }
             started = true
