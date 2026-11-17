@@ -28,14 +28,18 @@ private struct LibrarySettingsForm: View {
                         LibrarySettingsData(model: model)
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
-                    flight(settings)
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                    VStack(alignment: .leading, spacing: 28) {
+                        flight(settings)
+                        LibrarySettingsExperiments()
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
             } else {
                 VStack(alignment: .leading, spacing: 28) {
                     graphics(settings)
                     audio(settings)
                     flight(settings)
+                    LibrarySettingsExperiments()
                     LibrarySettingsData(model: model)
                 }
             }
@@ -166,6 +170,26 @@ private struct LibrarySettingsDifficultyRow: View {
 
 // MARK: - Data
 
+/// One switch per experimental feature (see Core/Experiments.swift).
+private struct LibrarySettingsExperiments: View {
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        let store = ExperimentStore.shared
+        VStack(alignment: .leading, spacing: 0) {
+            LibrarySectionHead(title: "4  Experiments")
+            Text("Features on trial. Each one can be switched off again.")
+                .font(.skyfold(13))
+                .foregroundStyle(palette.inkSoft.color)
+                .padding(.top, 10)
+            ForEach(ExperimentID.allCases) { id in
+                LibraryToggleRow(title: id.title, note: id.note,
+                                 isOn: Binding(get: { store.isOn(id) }, set: { store.set(id, on: $0) }))
+            }
+        }
+    }
+}
+
 private struct LibrarySettingsData: View {
     let model: AppModel
     @State private var confirming = false
@@ -173,7 +197,7 @@ private struct LibrarySettingsData: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            LibrarySectionHead(title: "4  Data")
+            LibrarySectionHead(title: "5  Data")
             VStack(alignment: .leading, spacing: 14) {
                 if confirming {
                     confirmation

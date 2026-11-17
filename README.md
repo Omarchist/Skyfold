@@ -85,6 +85,7 @@ Add them in *Product › Scheme › Edit Scheme › Run › Arguments*, or pass 
 | `-SkyfoldProgress mid` | Replace saved progress on launch: `fresh`, `mid` or `all` (Debug builds) |
 | `-SkyfoldStartAirport 5` | Start a run from route city 0, 3, 5 or 8; needs `-SkyfoldUnlockAll YES` (Debug builds) |
 | `-SkyfoldFlightScript crash` | About 6 s into the first leg: `pause`, `crash`, `shield`, `gameover` or `newbest`; needs `-SkyfoldAutostart YES -SkyfoldAutopilot YES` (Debug builds) |
+| `-SkyfoldExperiments postcards` | Switch experimental features on at launch: a comma list of `postcards`, `nearMissBonus`, `windGusts`, `ghostFlight`, `dailyRoute`, or `all` / `none` |
 
 `Tools/run-sim.sh` and `Tools/screenshots.sh` pass any of these switches to the app. The
 screenshot script saves a timed portrait or landscape series to `Screenshots/` and prints
@@ -93,6 +94,12 @@ each path.
 ```bash
 Tools/screenshots.sh flight landscape 5 3 -SkyfoldAutostart YES -SkyfoldAutopilot YES
 ```
+
+## Experimental features
+
+The `experimental` branch adds trial features. Each one has its own switch under
+*Settings › Experiments* (see `Skyfold/Core/Experiments.swift`) and is off by default, so the
+game can be compared with and without it.
 
 ## Project layout
 
