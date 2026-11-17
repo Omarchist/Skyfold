@@ -5,12 +5,14 @@ import SwiftUI
 struct JournalView: View {
     let onClose: () -> Void
     @Environment(AppModel.self) private var model
+    private let postcardsOn = ExperimentStore.shared.isOn(.postcards)
 
     var body: some View {
         LibraryPage(kicker: "Pilot's logbook", title: "Flight log", onClose: onClose) {
             LibraryJournalSummary(progress: model.progress)
         } content: {
             VStack(alignment: .leading, spacing: 28) {
+                if postcardsOn { PostcardsSection(progress: model.progress) }
                 LibraryJournalSection(title: "Blessings", kind: .blessing, progress: model.progress)
                 LibraryJournalSection(title: "Curses", kind: .curse, progress: model.progress)
             }

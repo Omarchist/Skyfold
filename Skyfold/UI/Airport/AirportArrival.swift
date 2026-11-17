@@ -15,6 +15,15 @@ struct AirportArrivalLayer: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    // Experiment: postcards. A new city (never home) gets one line and a small card.
+    private let postcardsOn = ExperimentStore.shared.isOn(.postcards)
+    @ViewBuilder private var postcardNote: some View {
+        if postcardsOn, arrival.firstVisit, arrival.city.index != 0 {
+            PostcardArrivalNote(city: arrival.city)
+                .opacity(cardIn ? 1 : 0)
+        }
+    }
+
     var body: some View {
         ViewThatFits(in: .vertical) {
             content
@@ -40,6 +49,9 @@ struct AirportArrivalLayer: View {
                     .padding(.trailing, 10)
                     .padding(.top, -4)
             }
+            postcardNote
+                .padding(.top, 14)
+                .padding(.horizontal, 6)
             AirportButton(title: "To the gates", trailing: "→", action: onContinue)
                 .padding(.top, 18)
         }
@@ -52,6 +64,7 @@ struct AirportArrivalLayer: View {
                 .frame(maxWidth: 540)
             VStack(alignment: .leading, spacing: 16) {
                 if !arrival.unlocks.isEmpty { stub }
+                postcardNote
                 AirportButton(title: "To the gates", trailing: "→", action: onContinue)
             }
             .frame(width: 262)
