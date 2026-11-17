@@ -13,7 +13,7 @@ Run `Tools/build-ios.sh` for a full simulator build on the Mac. To see the app, 
 `Tools/screenshots.sh` and read the PNG files it prints. Mac jobs run one at a time,
 so reserve them for Apple SDK checks and visual verification. Run
 `Tools/Blender/build_all.sh` on Linux. See
-[Build and run on the Mac from Linux](README.md#build-and-run-on-the-mac-from-linux)
+[Build and run on the Mac from Linux](DEVELOPING.md#build-and-run-on-the-mac-from-linux)
 for setup and the other commands.
 
 Read [ART_DIRECTION.md](ART_DIRECTION.md) before changing a screen or model.
