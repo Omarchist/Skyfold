@@ -12,6 +12,16 @@ enum Layer {
     static let shadow: Float = 0.135
 }
 
+// MARK: - Night ground
+
+extension Palette {
+    /// 0 by day and dusk, 1 at full night (window glow runs 0.6 to 1 between dusk and night).
+    var nightLift: Double { min(max((windowGlow - 0.6) / 0.4, 0), 1) }
+    /// The ground card as printed: the night palette's near-black ground is lifted to a readable ink blue.
+    var printGround: RGBA { ground.mixed(with: RGBA(hex: 0x222B44), nightLift) }
+    var printGroundFar: RGBA { groundFar.mixed(with: RGBA(hex: 0x30395A), nightLift) }
+}
+
 // MARK: - Material slots
 
 /// One shared paper material. Materials are value types in RealityKit, so a "shared" material is
@@ -120,7 +130,7 @@ struct StyledParts {
 /// Every flat color the scene uses. The style turns a palette into one color per role.
 enum RenderRole: CaseIterable {
     // plane
-    case planePaper, planeCrease
+    case planePaper, planeCrease, planeInk
     // obstacles
     case birdBody, birdWing, birdBeak
     case balloonA, balloonB, balloonC, balloonString
@@ -162,7 +172,7 @@ final class RenderStyle {
         for role in RenderRole.allCases {
             let kind: MaterialSlot.Kind
             switch role {
-            case .window, .towerBeacon, .runway, .runwayLine, .apron, .shadow, .trail, .fog, .ring,
+            case .window, .planeInk, .towerBeacon, .runway, .runwayLine, .apron, .shadow, .trail, .fog, .ring,
                  .groundCard, .fieldA, .fieldB, .fieldC, .river:
                 // Ground pieces are flat print, unless a real shadow has to fall on them.
                 kind = (realtimeShadows && (role == .groundCard || role == .fieldA || role == .fieldB
@@ -228,15 +238,19 @@ final class RenderStyle {
         set(.towerBeacon, p.accent)
         set(.star, lit(0xE5A03A, 0xF2C46A))
 
-        set(.groundCard, p.ground)
+        set(.planeInk, RGBA(hex: 0x2A211B).mixed(with: RGBA(hex: 0x070A14), night))
+
+        let g = p.printGround, gf = p.printGroundFar
+        set(.groundCard, g)
         // Fields seen from the air, like a survey map: three close tints of the ground card
         // (pale stubble, a darker ploughed strip, a terracotta one) and a muted airmail-blue river.
-        set(.fieldA, p.ground.mixed(with: p.groundFar, 0.6))
-        set(.fieldB, p.ground.mixed(with: p.ink, 0.09))
-        set(.fieldC, p.ground.mixed(with: p.accent, 0.16 - 0.08 * night))
-        set(.river, p.secondary.mixed(with: p.ground, 0.42 + 0.2 * night))
-        set(.hillNear, p.groundFar.mixed(with: p.ground, 0.55).scaled(1.05))
-        set(.hillFar, p.groundFar.scaled(1.06))
+        // At night they become ink-blue, slate green and plum plots, still flat and printed.
+        set(.fieldA, g.mixed(with: gf, 0.6).mixed(with: RGBA(hex: 0x2E3B5E), night))
+        set(.fieldB, g.mixed(with: p.ink, 0.09 * (1 - night)).mixed(with: RGBA(hex: 0x27404A), night))
+        set(.fieldC, g.mixed(with: p.accent, 0.16 * (1 - night)).mixed(with: RGBA(hex: 0x342F4E), night))
+        set(.river, p.secondary.mixed(with: g, 0.42 + 0.2 * night))
+        set(.hillNear, gf.mixed(with: g, 0.55).scaled(1.05))
+        set(.hillFar, gf.scaled(1.06))
         set(.tree, p.secondary.mixed(with: p.groundFar, 0.52 - 0.2 * night))
         set(.cloudPuff, p.cloud.scaled(1.05))
         set(.houseWall, RGBA(hex: 0xF0E3CC).mixed(with: p.cityTint, 0.0).scaled(1).mixed(with: RGBA(hex: 0x8C95B0), night))
@@ -249,17 +263,17 @@ final class RenderStyle {
 
         // Asphalt is always darker than card stock by day and a shade lighter than the black ground
         // at night, so the runway reads in both. Painted lines are cream, then bone.
-        let asphalt = p.ground.mixed(with: RGBA(hex: 0x2A211B), 0.55).mixed(with: RGBA(hex: 0x2B3246), night)
+        let asphalt = p.ground.mixed(with: RGBA(hex: 0x2A211B), 0.55).mixed(with: RGBA(hex: 0x131828), night)
         set(.runway, asphalt)
         set(.runwayLine, RGBA(hex: 0xEFE4CC).mixed(with: RGBA(hex: 0xB9B2A2), night))
-        set(.apron, asphalt.mixed(with: p.ground, 0.5))
+        set(.apron, asphalt.mixed(with: g, 0.5))
         set(.windsock, p.accent)
         set(.windsockStripe, p.paper)
         set(.gateFrame, lit(0xE5D5BD, 0x98A2BE))
         set(.gateDoor, lit(0x2C4F9E, 0x7D93C6))
         set(.gateSign, lit(0x2A211B, 0x2A2F44))
 
-        set(.shadow, p.ink.mixed(with: p.ground.scaled(0.4), night), 0.2)
+        set(.shadow, p.ink.mixed(with: g.scaled(0.4), night), 0.2)
         set(.trail, p.ink.mixed(with: p.paper, 0.1), 0.38)
         let f = min(max(fogAmount, 0), 0.9)
         set(.fog, p.fog, f > 0 ? 0.28 * f / 0.45 : 0)

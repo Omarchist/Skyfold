@@ -18,7 +18,7 @@ A.windowed_block(wall, window, 1.10, 1.07, 3.55,
 wall.box((1.17, 1.17, 0.13), center=(0, 0, 3.61))
 wall.box((0.05, 0.05, 0.32), center=(0, 0, 3.81))
 wall.to_object("Wall", C.flat_material("WallMat", C.INK["wall"]), recalc=False)
-window.to_object("Window", C.flat_material("WindowMat", C.INK["ink"]), recalc=False)
+window.to_object("Window", C.flat_material("WindowMat", C.INK["amber"]), recalc=False)
 C.MeshBuilder().box((0.18, 0.18, 0.16), center=(0, 0, 4.02), rot=(0, 0, 45)) \
     .to_object("Beacon", C.flat_material("BeaconMat", C.INK["red"]))
 

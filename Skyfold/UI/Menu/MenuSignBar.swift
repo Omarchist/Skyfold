@@ -28,13 +28,13 @@ struct MenuSignBar: View {
                             .signage(10.5, weight: .bold)
                             .foregroundStyle(text.color)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.75)
+                            .minimumScaleFactor(0.5)
                         Text(item.detail)
                             .font(.ticket(10, weight: .medium))
                             .foregroundStyle(palette.boardAccent.color)
                             .lineLimit(1)
                     }
-                    .padding(.horizontal, 11)
+                    .padding(.horizontal, 9)
                     .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
                 }
                 .buttonStyle(MenuSignStyle())

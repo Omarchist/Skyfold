@@ -235,8 +235,8 @@ nonisolated struct PlaneSkin: Identifiable, Sendable {
                   trail: RGBA(hex: 0xFFB0A6), unlockHint: "Land in Honolulu."),
         PlaneSkin(id: .goldLeaf, name: "Gold Leaf", paper: RGBA(hex: 0xF2CB6B), crease: RGBA(hex: 0xB8902F),
                   trail: RGBA(hex: 0xFFE7A3), unlockHint: "Land in New York."),
-        PlaneSkin(id: .midnight, name: "Midnight Ink", paper: RGBA(hex: 0x2B2850), crease: RGBA(hex: 0x7CF2C8),
-                  trail: RGBA(hex: 0x7CF2C8), unlockHint: "Land back in Lisbon after a full lap."),
+        PlaneSkin(id: .midnight, name: "Midnight Ink", paper: RGBA(hex: 0x2B2850), crease: RGBA(hex: 0xE4DCCB),
+                  trail: RGBA(hex: 0xE5A03A), unlockHint: "Land back in Lisbon after a full lap."),
     ]
 
     static func get(_ id: SkinID) -> PlaneSkin { all.first { $0.id == id }! }

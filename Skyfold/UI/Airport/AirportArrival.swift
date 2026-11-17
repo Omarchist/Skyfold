@@ -111,7 +111,7 @@ struct AirportPassportCard: View {
             .rotationEffect(Seeded.tilt("stamp-" + city.code, min: 4, max: 8))
             .scaleEffect(stampLanded || reduceMotion ? 1 : 1.35)
             .opacity(stampLanded ? 1 : 0)
-            .offset(x: landscape ? -16 : 12, y: landscape ? -22 : -30)
+            .offset(x: landscape ? -6 : 12, y: landscape ? -22 : -30)
             .allowsHitTesting(false)
     }
 
@@ -167,7 +167,7 @@ struct AirportPassportCard: View {
 
     private var landscapeBody: some View {
         HStack(alignment: .top, spacing: 0) {
-            Color.clear.frame(width: stampSize - 16, height: 1)
+            Color.clear.frame(width: stampSize - 6, height: 1)
             VStack(alignment: .leading, spacing: 0) {
                 heading
                 Perforation()

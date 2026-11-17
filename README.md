@@ -81,6 +81,10 @@ Add them in *Product › Scheme › Edit Scheme › Run › Arguments*, or pass 
 | `-SkyfoldAutoGates YES` | Airports advance on their own: arrival, open a gate, board |
 | `-SkyfoldTimeOfDay day` | Force the time-of-day setting: `cycle`, `clock`, `day` or `night` |
 | `-SkyfoldScreen journal` | Open a menu screen on launch: `journal`, `hangar`, `atlas`, `settings` |
+| `-SkyfoldMenuPicker skin` | Open a menu picker on launch: `airport`, `difficulty`, `skin` (Debug builds) |
+| `-SkyfoldProgress mid` | Replace saved progress on launch: `fresh`, `mid` or `all` (Debug builds) |
+| `-SkyfoldStartAirport 5` | Start a run from route city 0, 3, 5 or 8; needs `-SkyfoldUnlockAll YES` (Debug builds) |
+| `-SkyfoldFlightScript crash` | About 6 s into the first leg: `pause`, `crash`, `shield`, `gameover` or `newbest`; needs `-SkyfoldAutostart YES -SkyfoldAutopilot YES` (Debug builds) |
 
 `Tools/run-sim.sh` and `Tools/screenshots.sh` pass any of these switches to the app. The
 screenshot script saves a timed portrait or landscape series to `Screenshots/` and prints

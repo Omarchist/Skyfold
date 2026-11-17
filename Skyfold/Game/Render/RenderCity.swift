@@ -210,7 +210,7 @@ final class CityGroup {
 
     /// `open`: 0...1 swing of the chosen gate's doors.
     func place(anchorX: Float, blend: Float, reveal: Float, time: Float,
-               showRunway: Bool, showAirport: Bool, chosen: Int?, open: Float) {
+               showRunway: Bool, showAirport: Bool, chosen: Int?, open: Float, departing: Bool = false) {
         self.anchorX = anchorX
         let visible = anchorX > -110 && anchorX < 230
         if root.isEnabled != visible { root.isEnabled = visible }
@@ -219,6 +219,9 @@ final class CityGroup {
         if runwayRoot.isEnabled != showRunway { runwayRoot.isEnabled = showRunway }
         if airportRoot.isEnabled != showAirport { airportRoot.isEnabled = showAirport }
         if showRunway || showAirport { for p in flatParts { p.sync() } }
+        // Chase view: the apron shrinks to a narrow margin along the runway, not a wall across the screen.
+        apron.scale = [1 - 0.45 * blend, 1, 1 - 0.55 * blend]
+        apron.position = [2, World.groundY + Layer.apron - 0.0175, -3 * (1 - blend)]
 
         // Skyline.
         for b in blocks {
@@ -236,12 +239,14 @@ final class CityGroup {
         }
 
         guard showAirport else { return }
+        // The airport left behind sits behind the chase camera, so takeoff looks down a clear runway.
+        let back: Float = departing ? -38 : 0
         // Gates: A on the left half, B on the right half of the screen.
         let gateScale: Float = 1.3
         for g in 0..<2 {
             let sign: Float = g == 0 ? -1 : 1
             let pL = SIMD3<Float>(sign * gateHalfL, World.groundY, -2.6)
-            let pP = SIMD3<Float>(11, World.groundY, sign * gateHalfP)
+            let pP = SIMD3<Float>(11 + back, World.groundY, sign * gateHalfP)
             let p = pL + (pP - pL) * blend
             gateEntities[g].transform = Transform(scale: [gateScale, gateScale, gateScale],
                                                   rotation: simd_quatf(angle: -blend * (.pi / 2), axis: axisY),
@@ -252,17 +257,17 @@ final class CityGroup {
             doorsR[g]?.orientation = simd_quatf(angle: ang, axis: axisY)
         }
         if let t = terminal {
-            let pL = SIMD3<Float>(0, World.groundY, -7.6), pP = SIMD3<Float>(22, World.groundY, 0)
+            let pL = SIMD3<Float>(0, World.groundY, -7.6), pP = SIMD3<Float>(22 + back, World.groundY, 0)
             t.transform = Transform(scale: [1.5, 1.5, 1.5], rotation: simd_quatf(angle: -blend * (.pi / 2), axis: axisY),
                                     translation: pL + (pP - pL) * blend)
         }
         if let c = controlTower {
-            let pL = SIMD3<Float>(-15, World.groundY, -8.5), pP = SIMD3<Float>(15, World.groundY, 7.6)
+            let pL = SIMD3<Float>(-15, World.groundY, -8.5), pP = SIMD3<Float>(15 + back, World.groundY, 7.6)
             c.transform = Transform(scale: [1.5, 1.5, 1.5], rotation: simd_quatf(angle: 0.3, axis: axisY),
                                     translation: pL + (pP - pL) * blend)
         }
         if let w = windsock {
-            let pL = SIMD3<Float>(9.2, World.groundY, -4.6), pP = SIMD3<Float>(8, World.groundY, -5.6)
+            let pL = SIMD3<Float>(9.2, World.groundY, -4.6), pP = SIMD3<Float>(8 + back, World.groundY, -5.6)
             w.transform = Transform(scale: [1, 1, 1],
                                     rotation: simd_quatf(angle: sinf(time * 1.4) * 0.12, axis: axisY),
                                     translation: pL + (pP - pL) * blend)

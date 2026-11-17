@@ -234,6 +234,12 @@ struct MainMenuView: View {
             library = screen
         }
         #if DEBUG
+        // Screenshots only: -SkyfoldStartAirport N (with -SkyfoldUnlockAll YES) starts a run from route N.
+        if UserDefaults.standard.object(forKey: "SkyfoldStartAirport") != nil {
+            model.settings.selectedAirport = UserDefaults.standard.integer(forKey: "SkyfoldStartAirport")
+            model.startRun()
+            return
+        }
         // Screenshots only: -SkyfoldMenuPicker airport|difficulty|skin opens that list.
         if let raw = UserDefaults.standard.string(forKey: "SkyfoldMenuPicker"),
            let kind = MenuPickerKind(rawValue: raw) {

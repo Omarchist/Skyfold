@@ -177,17 +177,17 @@ final class WorldRenderer {
                           showRunway: f.destinationAirport, showAirport: f.destinationAirport,
                           chosen: f.gateChosen, open: f.doorOpen)
         origin.place(anchorX: f.originAnchor, blend: blend, reveal: 1, time: f.time,
-                     showRunway: f.originRunway, showAirport: f.originAirport, chosen: nil, open: 0)
+                     showRunway: f.originRunway, showAirport: f.originAirport, chosen: nil, open: 0, departing: true)
 
         let flat = shadowMode == .flat
         obstacles.sync(sim: sim, time: f.time, blend: blend, shadowsOn: flat)
         stars.sync(sim: sim, time: f.time, blend: blend)
-        trail.update(dx: f.dx, planeY: f.plane.y, vy: f.planeVy, speed: f.speed, enabled: trailOn,
+        trail.update(dx: f.dx, planeY: f.plane.y, vy: f.planeVy, speed: f.speed, enabled: trailOn && blend < 0.5,
                      portraitBlend: blend)
         // Seen side-on a paper dart is a sliver, so the side camera sees it banked toward the lens.
         var pose = f.plane
         pose.roll += (1 - blend) * 0.5
-        plane.apply(pose, shadowsOn: flat)
+        plane.apply(pose, shadowsOn: flat, side: 1 - blend)
         ring.update(dt: f.dt, at: f.plane.y, blend: blend)
     }
 

@@ -42,7 +42,9 @@ final class PlaneActor {
     let root = Entity()
     let model: Entity
     private let shadow: Entity
+    private let outline: Entity
     private var parts: StyledParts
+    private var outlineParts: StyledParts
     private var shadowPart: StyledPart?
     static let baseScale: Float = 1.25
 
@@ -52,23 +54,39 @@ final class PlaneActor {
         model.name = "planeModel"
         root.addChild(model)
         parts = StyledParts.bind(model, fallback: style.slot(.misc)) { style.resolve(model: .plane, part: $0, city: nil) }
+        // A printed ink outline: a slightly larger flat dark copy just behind the plane, so the pale
+        // dart stays readable against cream sky. Only the side camera shows it.
+        outline = library.make(.plane)
+        outline.name = "planeOutline"
+        root.addChild(outline)
+        let ink = style.slot(.planeInk)
+        outlineParts = StyledParts.bind(outline, fallback: ink) { _ in ink }
+        outline.isEnabled = false
         shadow = shapes.shadowEntity(slot: style.slot(.shadow))
         shadowPart = StyledPart(entity: shadow, slot: style.slot(.shadow))
         root.addChild(shadow)
     }
 
-    func apply(_ p: PlanePose, shadowsOn: Bool) {
+    /// `side`: 1 for the side camera (bigger plane, outlined), 0 for the chase camera.
+    func apply(_ p: PlanePose, shadowsOn: Bool, side: Float = 0) {
         root.position = [0, p.y, 0]
         let q = simd_quatf(angle: p.yaw, axis: axisY) * simd_quatf(angle: p.pitch, axis: axisZ)
             * simd_quatf(angle: p.roll, axis: axisX)
-        model.transform = Transform(scale: p.scale * Self.baseScale, rotation: q, translation: .zero)
+        let k = Self.baseScale * (1 + 0.55 * side)
+        model.transform = Transform(scale: p.scale * k, rotation: q, translation: .zero)
         model.isEnabled = p.visible
+        let showOutline = p.visible && side > 0.5
+        outline.isEnabled = showOutline
+        if showOutline {
+            outline.transform = Transform(scale: p.scale * k * 1.16, rotation: q, translation: [-0.02, 0, -0.07])
+            outlineParts.sync()
+        }
         let show = shadowsOn && p.shadow > 0.02
         shadow.isEnabled = show
         if show {
             let h = max(p.y - World.groundY, 0)
             let s = (1 - min(h * 0.045, 0.3)) * p.shadow
-            shadow.transform = Transform(scale: [0.62 * s, 1, 1.05 * s], rotation: .init(angle: 0, axis: axisY),
+            shadow.transform = Transform(scale: [0.45 * s, 1, 0.78 * s], rotation: .init(angle: 0, axis: axisY),
                                          translation: [0.35, World.groundY + Layer.shadow - p.y, 0])
         }
         parts.sync()
@@ -238,7 +256,7 @@ final class ObstaclePool {
                 let r: Float = o.kind == .thunderhead ? 0.95 : (o.kind == .stormCloud ? 0.7 : 0.45)
                 let k = (1 - min(h * 0.04, 0.3)) * grow / s
                 // Counter the holder's rotation and scale so the shadow stays flat on the ground.
-                sh.transform = Transform(scale: [r * k, 1, r * 1.5 * k], rotation: q.inverse,
+                sh.transform = Transform(scale: [r * 0.75 * k, 1, r * 1.1 * k], rotation: q.inverse,
                                          translation: q.inverse.act([0.4, World.groundY + Layer.shadow - y, 0] / s))
             }
         }

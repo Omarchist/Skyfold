@@ -162,7 +162,7 @@ struct AirportGateLayer: View {
             slip
             controls
         }
-        .frame(width: min(316, metrics.contentWidth))
+        .frame(width: min(316, max(220, metrics.size.width / 2 - geometry.signSize.width - 18)))
         .padding(.top, metrics.top)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }

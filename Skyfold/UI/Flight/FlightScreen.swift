@@ -26,9 +26,31 @@ struct FlightScreen: View {
             .environment(\.isLandscape, landscape)
         }
         .modifier(FlightPaletteScope(session: session))
+        .task { await runDebugScript() }
         .background(Color.black.ignoresSafeArea())
         #if os(iOS)
         .modifier(FlightChrome())
+        #endif
+    }
+}
+
+extension FlightScreen {
+    /// DEBUG launch argument -SkyfoldFlightScript: drives one phase for screenshots.
+    @MainActor fileprivate func runDebugScript() async {
+        #if DEBUG
+        guard let script = DebugFlags.flightScript else { return }
+        try? await Task.sleep(for: .seconds(6))
+        guard session.phase == .flying else { return }
+        switch script {
+        case "pause": session.pause()
+        case "crash": session.revives = 1; session.registerHit()
+        case "shield":
+            session.shields = 1
+            session.registerHit()
+        case "newbest": session.score = 98_765; session.stars = 12; session.quit()
+        case "gameover": session.quit()
+        default: break
+        }
         #endif
     }
 }

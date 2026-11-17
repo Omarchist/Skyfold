@@ -111,10 +111,10 @@ struct BackdropColors {
         crater = flat(p.sun.mixed(with: deep, 0.13).withAlpha(moonness))
         drawCraters = moonness > 0.02
 
-        let farHill = p.groundFar
-        let nearHill = p.ground.mixed(with: deep, 0.12)
+        let farHill = p.printGroundFar
+        let nearHill = p.printGround.mixed(with: deep, 0.12)
         hillFar = flat(farHill)
-        hillMid = flat(farHill.mixed(with: p.ground, 0.5))
+        hillMid = flat(farHill.mixed(with: p.printGround, 0.5))
         hillNear = flat(nearHill)
         let shadow = flat(deep.withAlpha(shadowAlpha))
         shadowFar = shadow
@@ -132,7 +132,7 @@ struct BackdropColors {
         windowDark = flat(deep.withAlpha(0.13 * (1 - min(max(p.windowGlow, 0), 1))))
         drawDarkWindows = p.windowGlow < 0.98
 
-        ground = flat(p.ground)
+        ground = flat(p.printGround)
     }
 }
 

@@ -13,9 +13,9 @@ import common as C  # noqa: E402
 
 C.reset_scene()
 
-body_mat = C.flat_material("BodyMat", "#4A4A58")
-wing_mat = C.flat_material("WingMat", "#4A4A58")
-beak_mat = C.flat_material("BeakMat", "#F2A33A")
+body_mat = C.flat_material("BodyMat", C.INK["slate"])
+wing_mat = C.flat_material("WingMat", C.INK["slate"])
+beak_mat = C.flat_material("BeakMat", C.INK["ochre"])
 
 # Body: a faceted spindle, big round head at -X (front), tapering to the tail.
 body = C.MeshBuilder().loft_x([

@@ -25,7 +25,9 @@ enum RigMath {
     static let groundFarZ: Float = -30
     static let groundFarX: Float = 190
 
-    /// Visible width (m) of the side view at the lane plane.
+    /// Visible width (m) of the side view at the lane plane. About 32 m on a phone, which leaves
+    /// roughly 23 m of look-ahead: under a second of warning at the top speeds, so keep it this wide
+    /// and make the plane readable with its scale and ink outline instead of a tighter view.
     static func sideWidth(aspect: Float) -> Float { min(max(14.7 * aspect, 26), 40) }
 
     static func landscapeFlight(aspect: Float) -> RigPose {

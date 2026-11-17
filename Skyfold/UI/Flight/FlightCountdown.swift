@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// The big 3, 2, 1. Printed twice slightly out of register, the way a two-color poster is,
-/// with the flight number and the sector above it like a gate board.
+/// The big 3, 2, 1, printed on a departure slip so it reads over any scene, day or night.
+/// The numeral is set twice slightly out of register, the way a two-color poster is. The slip
+/// never takes touches, so the flight gestures still work under it.
 struct FlightCountdown: View {
     let session: RunSession
     let landscape: Bool
@@ -11,24 +12,40 @@ struct FlightCountdown: View {
     var body: some View {
         let n = min(3, max(1, session.countdown))
         let resuming = session.legDistance > 1
-        VStack(alignment: .leading, spacing: landscape ? 0 : 2) {
-            Text(resuming ? "Resuming in" : "Takeoff in")
-                .signage(13, weight: .bold)
-                .foregroundStyle(palette.accent.color)
+        let shape = TicketShape(cornerRadius: 3, notch: .horizontal(fromTop: 40), notchRadius: 5)
+        HStack(alignment: .center, spacing: 14) {
             numeral(n)
                 .id(n)
                 .transition(reduceMotion ? .opacity : .asymmetric(
-                    insertion: .scale(scale: 1.3, anchor: .leading).combined(with: .opacity),
+                    insertion: .scale(scale: 1.25, anchor: .center).combined(with: .opacity),
                     removal: .opacity))
-            HStack(spacing: 8) {
+            Rectangle()
+                .fill(palette.flightEdge)
+                .frame(width: 1)
+                .padding(.vertical, 4)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(resuming ? "Resuming in" : "Takeoff in")
+                    .signage(12, weight: .bold)
+                    .foregroundStyle(palette.accent.color)
+                    .lineLimit(1)
                 Text(UIFormat.flightNumber(from: session.leg.fromRoute, to: session.leg.toRoute))
-                    .font(.ticket(13, weight: .bold))
+                    .font(.ticket(15, weight: .bold))
+                    .foregroundStyle(palette.ink.color)
+                    .lineLimit(1)
                 Text("\(session.origin.code) to \(session.destination.code)")
                     .font(.ticket(13, weight: .medium))
+                    .foregroundStyle(palette.inkSoft.color)
+                    .lineLimit(1)
             }
-            .foregroundStyle(palette.ink.color)
-            .padding(.top, landscape ? 0 : 4)
+            .fixedSize()
         }
+        .fixedSize()
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(shape.fill(palette.paper.color))
+        .overlay(shape.stroke(palette.flightEdge, lineWidth: 1))
+        .printShadow(shape)
+        .rotationEffect(.degrees(-1.5))
         .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: n)
         // Portrait: a block in the HUD column. Landscape: centered, to the right of the plane.
         .frame(maxWidth: landscape ? .infinity : nil, maxHeight: landscape ? .infinity : nil,
@@ -39,7 +56,7 @@ struct FlightCountdown: View {
     }
 
     private func numeral(_ n: Int) -> some View {
-        let size: CGFloat = landscape ? 120 : 140
+        let size: CGFloat = 84
         return ZStack(alignment: .topLeading) {
             Text("\(n)")
                 .foregroundStyle(palette.accent.color)
@@ -50,5 +67,6 @@ struct FlightCountdown: View {
         .font(.ticket(size, weight: .heavy))
         .lineLimit(1)
         .fixedSize()
+        .frame(minWidth: 56)
     }
 }

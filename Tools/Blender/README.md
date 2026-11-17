@@ -42,3 +42,9 @@ Blender authors in Z-up. The exporter converts the mesh data to game coordinates
 | `gate` | 1.80 × 2.60 × 0.30 | `Frame`, `DoorL`, `DoorR`, `Sign`, `Glow` |
 
 The plane points along +X and the bird faces −X. The bird wing origins sit at the shoulders. The gate faces +Z and each door keeps its pivot at the outer hinge. The triangle cap is 400 per asset and 160 per building variant.
+
+## Look and icon
+
+Everything is folded or cut paper: balloons are four-sided origami water-bombs, the star is a lucky star, clouds are three cut-card layers with scalloped edges, and buildings are card boxes with punched windows. Default part colors come from the print palette in `common.py` (`INK`); the game recolors parts by name at runtime. `verify_usdz.py` also checks matte materials (roughness 0.9, metallic 0).
+
+`render_icon.py` draws the app icon flat with numpy (no 3D render): cream card, diagonal airmail stripes, one folded dart made of flat facets, and a hard offset shadow with no blur or gradient.

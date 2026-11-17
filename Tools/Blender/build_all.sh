@@ -30,7 +30,7 @@ run_blender "${model_scripts[@]}" -- --out "$staging/models"
 run_blender --python "$tools_dir/verify_usdz.py" -- "$staging/models"
 run_blender --python "$tools_dir/render_previews.py" -- \
     --models-dir "$staging/models" --preview-dir "$staging/previews"
-run_blender --python "$tools_dir/render_icon.py" -- --plane "$staging/models/plane.usdz" \
+run_blender --python "$tools_dir/render_icon.py" -- \
     --day "$staging/AppIcon.png" --night "$staging/previews/icon_night.png"
 
 cp -- "$staging/models/"*.usdz "$root/Skyfold/Resources/Models/"

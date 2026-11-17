@@ -20,12 +20,15 @@ outline = C.scalloped([
 ])
 cloud = C.MeshBuilder()
 for y, scale, dx, dz, lean, yaw in [
-    (0.54, 1.00, 0.02, 0.06, -4.0, -2.0),
-    (0.02, 0.91, 0.08, -0.01, 3.0, 1.0),
-    (-0.55, 0.74, -0.18, -0.12, 7.0, 4.0),
+    (0.54, 1.00, 0.02, 0.06, -9.0, -2.0),
+    (0.02, 0.91, 0.08, -0.01, 2.0, 1.0),
+    (-0.55, 0.74, -0.18, -0.12, 11.0, 4.0),
 ]:
-    cloud.card_xz([(x * scale + dx, z * scale + dz) for x, z in outline],
-                  y=y, thickness=0.022, lean=lean, yaw=yaw)
+    pts = [(x * scale + dx, z * scale + dz) for x, z in outline]
+    if y < -0.3:   # the back layer is the same cut flipped over: no two layers match
+        pts = [(-x, z) for x, z in reversed(pts)]
+    cloud.card_xz(pts,
+                  y=y, thickness=0.034, lean=lean, yaw=yaw)
 cloud.box((0.12, 1.08, 0.019), center=(0.30, 0.02, -0.21), rot=(0, 11, 2))
 cloud.box((0.12, 1.08, 0.019), center=(-0.37, 0.02, -0.07), rot=(0, -11, -4))
 cloud.to_object("Cloud", C.flat_material("CloudMat", C.INK["warm_white"]))

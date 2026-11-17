@@ -22,6 +22,7 @@ final class AppModel {
         self.progress = progress
         #if DEBUG
         if DebugFlags.unlockAll { progress.unlockEverything() }
+        if let mode = DebugFlags.progress { DebugProgressSeed.apply(mode, to: progress) }
         #endif
         if let raw = DebugFlags.timeOfDay, let mode = TimeOfDayMode(rawValue: raw) {
             settings.timeOfDay = mode
