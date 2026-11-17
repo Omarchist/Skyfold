@@ -104,7 +104,9 @@ struct CloseCallDetector: Equatable {
             let o = obstacles[i]
             guard o.isActive, o.passed, handled[i] != o.id else { continue }
             handled[i] = o.id
-            if o.closest < Self.clearance { found += 1 }
+            // A negative clearance means the plane overlapped the obstacle while protected (after a
+            // shield or a revive): that is a free ride, not a close call.
+            if o.closest >= 0, o.closest < Self.clearance { found += 1 }
         }
         return found
     }

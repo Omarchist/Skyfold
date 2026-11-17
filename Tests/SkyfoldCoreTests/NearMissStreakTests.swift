@@ -155,3 +155,19 @@ func detectorCountsEachPassOnceAndOnlyWhenClose() {
     close.id = 9                                   // slot reused by a new obstacle
     #expect(detector.scan([close, far, ahead]) == 1)
 }
+
+@Test func flyingThroughAnObstacleWhileProtectedIsNotACloseCall() {
+    var through = Obstacle(); through.id = 1; through.passed = true; through.closest = -0.3
+    var detector = CloseCallDetector()
+    #expect(detector.scan([through]) == 0)
+}
+
+@Test func resettingTheDetectorCountsReusedIdsOnANewLeg() {
+    var o = Obstacle(); o.id = 7; o.passed = true; o.closest = 0.4
+    var detector = CloseCallDetector()
+    #expect(detector.scan([o]) == 1)
+    // A new leg restarts the ids, so the same id can come back in the same slot.
+    #expect(detector.scan([o]) == 0)
+    detector.reset()
+    #expect(detector.scan([o]) == 1)
+}

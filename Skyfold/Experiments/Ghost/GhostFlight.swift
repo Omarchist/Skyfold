@@ -19,6 +19,7 @@ final class GhostFlightRun {
     private let saved: GhostRun?
     private var leg = 0
     private var note: String?
+    private var noteMeters: Int?
 
     init?(session: RunSession) {
         guard ExperimentStore.shared.isOn(.ghostFlight), session.daily == nil else { return nil }
@@ -70,7 +71,7 @@ final class GhostFlightRun {
             reachAhead = 55
             reachBehind = 5
         }
-        setNote(GhostReplay.note(ahead: p.ahead, visibleAhead: reachAhead, visibleBehind: reachBehind))
+        setNoteMeters(GhostReplay.offscreenMeters(ahead: p.ahead, visibleAhead: reachAhead, visibleBehind: reachBehind))
         return GhostFrame(x: Float(p.ahead), y: y, pitch: pitch)
     }
 
@@ -84,6 +85,17 @@ final class GhostFlightRun {
     }
 
     private func setNote(_ text: String?) {
+        guard text != note else { return }
+        note = text
+        noteMeters = nil
+        session.ghostNote = text
+    }
+
+    /// Builds the note text only when the number of meters changes (not every frame).
+    private func setNoteMeters(_ meters: Int?) {
+        guard meters != noteMeters || (meters == nil) != (note == nil) else { return }
+        noteMeters = meters
+        let text = meters.map { $0 > 0 ? "GHOST +\($0) m" : "GHOST \u{2212}\(-$0) m" }
         guard text != note else { return }
         note = text
         session.ghostNote = text

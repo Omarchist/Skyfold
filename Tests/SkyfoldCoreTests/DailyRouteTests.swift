@@ -90,3 +90,30 @@ private func day(_ iso: String) -> DailyRoute {
     #expect(store.best(for: a) == 450)
     #expect(store.best(for: b) == nil)
 }
+
+@Test func dailyBestsKeepOnlyTheRecentDaysAndClearOnReset() {
+    let suite = "skyfold.test.dailybest.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let store = DailyBestStore(defaults: defaults)
+    let first = DailyRoute(day: 20_000)
+    for offset in 0..<(DailyBestStore.keepDays + 10) {
+        store.record(score: 100 + offset, for: DailyRoute(day: first.day + offset))
+    }
+    #expect(store.best(for: first) == nil)                       // the oldest days were dropped
+    let latest = DailyRoute(day: first.day + DailyBestStore.keepDays + 9)
+    #expect(store.best(for: latest) == 100 + DailyBestStore.keepDays + 9)
+    #expect((defaults.dictionary(forKey: "skyfold.dailyBest.v1") ?? [:]).count == DailyBestStore.keepDays)
+    store.clear()
+    #expect(store.best(for: latest) == nil)
+}
+
+@Test func aZeroScoreIsNeverTheDailyBest() {
+    let suite = "skyfold.test.dailyzero.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let store = DailyBestStore(defaults: defaults)
+    #expect(!store.record(score: 0, for: DailyRoute(day: 20_000)))
+    #expect(store.best(for: DailyRoute(day: 20_000)) == nil)
+    #expect(store.record(score: 10, for: DailyRoute(day: 20_000)))
+}

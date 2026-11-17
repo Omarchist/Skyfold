@@ -92,6 +92,8 @@ final class DailyBestStore {
 
     private let defaults: UserDefaults
     private static let key = "skyfold.dailyBest.v1"
+    /// Days kept. Older bests are dropped when a new one is written, so the table stays small.
+    static let keepDays = 30
 
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
@@ -106,10 +108,21 @@ final class DailyBestStore {
     /// Records a finished daily run. Returns true when it is the day's best so far.
     @discardableResult
     func record(score: Int, for route: DailyRoute) -> Bool {
+        guard score > 0 else { return false } // a run that scored nothing is not a best
         var all = table
         if let old = all[route.key], old >= score { return false }
         all[route.key] = score
-        table = all
+        table = Self.pruned(all)
         return true
     }
+
+    /// Keeps the `keepDays` most recent dates (keys sort by date).
+    static func pruned(_ all: [String: Int]) -> [String: Int] {
+        guard all.count > keepDays else { return all }
+        let keep = Set(all.keys.sorted().suffix(keepDays))
+        return all.filter { keep.contains($0.key) }
+    }
+
+    /// "Reset progress": forgets every daily best.
+    func clear() { defaults.removeObject(forKey: Self.key) }
 }

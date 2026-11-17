@@ -17,10 +17,14 @@ struct AirportArrivalLayer: View {
 
     // Experiment: postcards. A new city (never home) gets one line and a small card.
     private let postcardsOn = ExperimentStore.shared.isOn(.postcards)
-    @ViewBuilder private var postcardNote: some View {
+    /// `inset`: the portrait column adds its own spacing, inside the condition so that with the
+    /// switch off (or no new city) nothing is left behind, not even padding.
+    @ViewBuilder private func postcardNote(inset: Bool = false) -> some View {
         if postcardsOn, arrival.firstVisit, arrival.city.index != 0 {
             PostcardArrivalNote(city: arrival.city)
                 .opacity(cardIn ? 1 : 0)
+                .padding(.top, inset ? 14 : 0)
+                .padding(.horizontal, inset ? 6 : 0)
         }
     }
 
@@ -49,9 +53,7 @@ struct AirportArrivalLayer: View {
                     .padding(.trailing, 10)
                     .padding(.top, -4)
             }
-            postcardNote
-                .padding(.top, 14)
-                .padding(.horizontal, 6)
+            postcardNote(inset: true)
             AirportButton(title: "To the gates", trailing: "→", action: onContinue)
                 .padding(.top, 18)
         }
@@ -64,7 +66,7 @@ struct AirportArrivalLayer: View {
                 .frame(maxWidth: 540)
             VStack(alignment: .leading, spacing: 16) {
                 if !arrival.unlocks.isEmpty { stub }
-                postcardNote
+                postcardNote()
                 AirportButton(title: "To the gates", trailing: "→", action: onContinue)
             }
             .frame(width: 262)

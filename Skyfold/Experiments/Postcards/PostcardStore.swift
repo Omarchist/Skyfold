@@ -30,6 +30,12 @@ final class PostcardStore {
         save()
     }
 
+    /// "Reset progress": forgets every date.
+    func clear() {
+        dates = [:]
+        defaults.removeObject(forKey: Self.key)
+    }
+
     /// Dates the visited cities that have none (progress seeded without a landing) and forgets
     /// dates of cities that are not visited any more.
     func reconcile(visited: Set<Int>) {

@@ -162,7 +162,7 @@ struct MainMenuView: View {
     /// Daily route experiment: the ticket under the boarding pass, only with the switch on.
     @ViewBuilder private var dailyTicket: some View {
         if dailyOn {
-            DailyRouteTicket { model.startDailyRun() }
+            DailyRouteTicket { model.startDailyRun($0) }
                 .rotationEffect(.degrees(0.7))
         }
     }

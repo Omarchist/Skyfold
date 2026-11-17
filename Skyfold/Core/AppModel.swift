@@ -69,6 +69,7 @@ final class AppModel {
     /// Clears the logbook and unlocks, including any selected loadout that became locked.
     func resetProgress() {
         progress.resetAll()
+        ExperimentData.resetAll() // experiments: ghosts, daily bests, postcard dates
         sanitizeLoadout()
     }
 

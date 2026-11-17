@@ -3,12 +3,22 @@ import Foundation
 /// The saved ghost for each departure airport and difficulty: one small JSON file in Application
 /// Support per pair, holding the best run's tracks. Plain file work, so it is safe off the main actor.
 nonisolated enum GhostStore {
-    private static func url(route: Int, difficulty: String) -> URL? {
+    private static func directory(create: Bool) -> URL? {
         guard let base = try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
-                                                      appropriateFor: nil, create: true) else { return nil }
+                                                      appropriateFor: nil, create: create) else { return nil }
         let dir = base.appendingPathComponent("Ghosts", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("ghost-\(route)-\(difficulty).json")
+        if create { try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true) }
+        return dir
+    }
+
+    private static func url(route: Int, difficulty: String) -> URL? {
+        directory(create: true)?.appendingPathComponent("ghost-\(route)-\(difficulty).json")
+    }
+
+    /// "Reset progress": deletes every saved ghost. Makes nothing when there are none.
+    static func clear() {
+        guard let dir = directory(create: false) else { return }
+        try? FileManager.default.removeItem(at: dir)
     }
 
     static func load(route: Int, difficulty: String) -> GhostRun? {
@@ -37,10 +47,11 @@ nonisolated enum GhostStore {
 #if DEBUG
 extension GhostStore {
     /// `-SkyfoldGhostPlant YES`: stores a made-up ghost for the pair on launch, so screenshots do not
-    /// need a finished run first. It flies each leg 6% faster than the leg's speed plan and changes
-    /// lane every few seconds.
+    /// need a finished run first. It flies each leg 6% faster than the leg's speed plan (change it with
+    /// `-SkyfoldGhostPace 1.12`) and changes lane every few seconds.
     static func plantDebugGhost(startRoute: Int, difficulty: Difficulty) {
         guard UserDefaults.standard.bool(forKey: "SkyfoldGhostPlant") else { return }
+        let pace = UserDefaults.standard.double(forKey: "SkyfoldGhostPace")
         var legs: [GhostLeg] = []
         for n in 0..<6 {
             let plan = LegPlan.plan(fromRoute: startRoute + n, legsCompleted: n, startRoute: startRoute,
@@ -53,7 +64,7 @@ extension GhostStore {
             let lanes: [Float] = [1, 2, 2, 0, 1, 1, 2, 1, 0, 0]
             while dist < plan.length {
                 t += dt
-                let speed = Double(plan.speed(atProgress: dist / plan.length)) * 1.06
+                let speed = Double(plan.speed(atProgress: dist / plan.length)) * (pace > 0 ? pace : 1.06)
                 dist += speed * Double(dt)
                 let k = Int(t / 3.2)
                 let from = lanes[k % lanes.count], to = lanes[(k + 1) % lanes.count]

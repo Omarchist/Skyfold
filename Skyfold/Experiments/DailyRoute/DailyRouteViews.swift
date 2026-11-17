@@ -4,9 +4,11 @@ import SwiftUI
 /// A small horizontal ticket with a tear-off stub, so it sits beside the boarding pass without
 /// repeating it. The date, route and best are read once when the menu appears.
 struct DailyRouteTicket: View {
-    let onFly: () -> Void
+    /// Starts the route shown on the ticket (not whatever the date is when it is pressed).
+    let onFly: (DailyRoute) -> Void
 
     @Environment(\.palette) private var palette
+    @Environment(\.scenePhase) private var scenePhase
     @State private var route = DailyRoute.today
     @State private var best = DailyBestStore.shared.best(for: .today)
 
@@ -41,7 +43,7 @@ struct DailyRouteTicket: View {
             .padding(.vertical, 7)
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button(action: onFly) {
+            Button { onFly(route) } label: {
                 Text("Fly today's route")
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
@@ -57,6 +59,15 @@ struct DailyRouteTicket: View {
         .overlay(shape.stroke(palette.paperEdge.color, lineWidth: 1))
         .printShadow(shape)
         .accessibilityElement(children: .contain)
+        .onAppear(perform: refresh)
+        .onChange(of: scenePhase) { _, phase in if phase == .active { refresh() } }
+    }
+
+    /// The date can turn over while the app waits on the menu.
+    private func refresh() {
+        let today = DailyRoute.today
+        route = today
+        best = DailyBestStore.shared.best(for: today)
     }
 
     private var bestLine: String {
@@ -106,8 +117,12 @@ enum DailyRouteDebug {
         model.startDailyRun()
         let seconds = UserDefaults.standard.double(forKey: "SkyfoldDailyQuit")
         guard seconds > 0 else { return }
-        try? await Task.sleep(for: .seconds(seconds))
-        model.run?.quit()
+        // Unstructured: the menu's own task is cancelled as soon as the flight screen replaces it.
+        let run = model.run
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(seconds))
+            run?.quit()
+        }
     }
 }
 #endif

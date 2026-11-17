@@ -6,7 +6,9 @@ import Foundation
 /// marked hooks and the rest of the game never sees it.
 final class GustDirector {
     private var gusts = WindGusts(seed: 1)
-    private var lastDt: Float = 1.0 / 60
+    /// While no safe push exists the check is repeated a few times a second, not every frame.
+    private var lookTimer: Float = 0
+    private static let lookInterval: Float = 0.25
 
     /// A fresh leg.
     func reset(seed: UInt64, session: RunSession) {
@@ -14,18 +16,26 @@ final class GustDirector {
         publish(session)
     }
 
-    /// The player revived: no wind for a while.
-    func hold(session: RunSession) {
-        gusts.hold()
+    /// Drops a running warning and keeps the wind quiet for `seconds` of flying (a revive, a pause,
+    /// a crash or a landing).
+    func hold(session: RunSession, for seconds: Float = WindGusts.holdAfterRevive) {
+        gusts.hold(for: seconds)
+        lookTimer = 0
         publish(session)
     }
 
     /// Steps the gusts for one flying frame. Call once per frame while the phase is `.flying`.
     func tick(dt: Float, sim: inout FlightSimulation, speed: Float, session: RunSession) {
-        lastDt = dt
-        let ctx = (gusts.needsContext || gusts.pushDue(within: dt)) ? sim.gustContext(speed: speed) : nil
+        var ctx: GustContext?
+        if gusts.pushDue(within: dt) {
+            ctx = sim.gustContext(speed: speed)
+        } else if gusts.needsContext {
+            lookTimer -= dt
+            if lookTimer <= 0 { ctx = sim.gustContext(speed: speed) }
+        }
         switch gusts.advance(dt: dt, context: ctx) {
         case .none:
+            if ctx != nil { lookTimer = Self.lookInterval }
             return
         case .announced:
             session.gustSerial += 1

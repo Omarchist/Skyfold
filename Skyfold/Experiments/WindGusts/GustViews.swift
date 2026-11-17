@@ -10,13 +10,17 @@ struct GustLayer: View {
     @State private var direction = 1
     @State private var started = Date()
     @State private var lingerUntil = Date.distantPast
+    /// True from the warning until the streaks have blown out; no timeline runs outside that.
+    @State private var running = false
 
     var body: some View {
         let warning = session.gustWarning
         ZStack(alignment: .topTrailing) {
-            TimelineView(.animation(minimumInterval: 1.0 / 30, paused: warning == 0 && Date() > lingerUntil)) { timeline in
-                GustStreaks(direction: direction, age: timeline.date.timeIntervalSince(started),
-                            live: warning != 0, fade: max(0, lingerUntil.timeIntervalSince(timeline.date)))
+            if running {
+                TimelineView(.animation(minimumInterval: 1.0 / 30)) { timeline in
+                    GustStreaks(direction: direction, age: timeline.date.timeIntervalSince(started),
+                                live: warning != 0, fade: max(0, lingerUntil.timeIntervalSince(timeline.date)))
+                }
             }
             GustSign(direction: direction)
                 .padding(.top, landscape ? 118 : 168)
@@ -30,8 +34,13 @@ struct GustLayer: View {
                 direction = new
                 started = Date()
                 lingerUntil = .distantPast
+                running = true
             } else if old != 0 {
                 lingerUntil = Date().addingTimeInterval(0.5)   // the streaks blow out after the push
+                Task {
+                    try? await Task.sleep(for: .milliseconds(550))
+                    if session.gustWarning == 0 { running = false }
+                }
             }
         }
     }

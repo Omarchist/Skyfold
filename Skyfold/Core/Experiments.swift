@@ -50,6 +50,9 @@ final class ExperimentStore {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        #if DEBUG
+        if defaults.bool(forKey: "SkyfoldExperimentsReset") { ExperimentData.resetAll() }
+        #endif
         if let launch = defaults.string(forKey: "SkyfoldExperiments") {
             enabled = Self.parse(launch)
         } else {

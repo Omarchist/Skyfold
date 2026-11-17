@@ -195,11 +195,18 @@ nonisolated enum GhostReplay {
                               landed: time >= leg.duration)
     }
 
+    /// The signed whole meters behind `note` (positive: ahead), nil when the ghost is in view. Lets
+    /// the caller build the text only when the number changes.
+    static func offscreenMeters(ahead: Double, visibleAhead: Double, visibleBehind: Double) -> Int? {
+        if ahead > visibleAhead { return Int(ahead.rounded()) }
+        if ahead < -visibleBehind { return -Int((-ahead).rounded()) }
+        return nil
+    }
+
     /// Text for the printed note when the ghost is off screen, such as "GHOST +40 m". Nil when it
     /// is near enough to see. `visibleAhead` and `visibleBehind` are how far (m) the screen reaches.
     static func note(ahead: Double, visibleAhead: Double, visibleBehind: Double) -> String? {
-        if ahead > visibleAhead { return "GHOST +\(Int(ahead.rounded())) m" }
-        if ahead < -visibleBehind { return "GHOST \u{2212}\(Int((-ahead).rounded())) m" }
-        return nil
+        guard let m = offscreenMeters(ahead: ahead, visibleAhead: visibleAhead, visibleBehind: visibleBehind) else { return nil }
+        return m > 0 ? "GHOST +\(m) m" : "GHOST \u{2212}\(-m) m"
     }
 }

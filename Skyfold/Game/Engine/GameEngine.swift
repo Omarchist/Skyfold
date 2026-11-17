@@ -49,7 +49,7 @@ final class GameEngine {
 
     // Wind gusts experiment, read once when the run starts.
     private let gustsOn = ExperimentStore.shared.isOn(.windGusts)
-    private let gusts = GustDirector()
+    private let gusts: GustDirector?
 
     // Countdown and takeoff.
     private var countdownT: Float = 0
@@ -99,6 +99,10 @@ final class GameEngine {
         nightness = session.nightness
         nightTarget = session.nightness
         ghostRun = GhostFlightRun(session: session) // ghost flight
+        gusts = gustsOn ? GustDirector() : nil // wind gusts
+        #if DEBUG
+        ExperimentDebug.armQuit(session)
+        #endif
     }
 
     /// Fog from the Fog Bank curse. Debug builds can force it with the `HarnessFog` launch argument.
@@ -149,7 +153,8 @@ final class GameEngine {
         sim.reset(config: cfg, startDistance: -Double(takeoffMeters), lane: World.middleLane,
                   seed: session.legSeed ?? UInt64.random(in: 1...UInt64.max))
         autopilot.reset()
-        if gustsOn { gusts.reset(seed: session.legSeed ?? UInt64.random(in: 1...UInt64.max), session: session) } // wind gusts
+        gusts?.reset(seed: session.legSeed ?? UInt64.random(in: 1...UInt64.max), session: session) // wind gusts
+        if nearMissOn { closeCalls.reset() } // a new leg restarts the obstacle ids
         session.lane = World.middleLane
         queuedLane = 0
         crash = CrashState()
@@ -269,6 +274,10 @@ final class GameEngine {
     // MARK: Phase entry
 
     private func enter(_ phase: RunPhase, from: RunPhase) {
+        // Wind gusts: any running warning ends when the plane stops flying (pause, crash, landing).
+        if let gusts, phase != .flying, phase != .countdown {
+            gusts.hold(session: session, for: phase == .paused ? 3 : WindGusts.holdAfterRevive)
+        }
         switch phase {
         case .countdown:
             if from != .countdown {
@@ -278,6 +287,9 @@ final class GameEngine {
             }
         case .flying:
             takeoffRun = false
+            // Near-miss bonus: what went by while the plane was not flying (takeoff run, protection
+            // after a revive) is not a close call.
+            if nearMissOn { _ = closeCalls.scan(sim.obstacles) }
             // A pause in the first moments of a takeoff must not leave the airport camera on.
             airportCamera = false
             // Starting from rest (after a pause or a revive): ease the world up to speed.
@@ -334,7 +346,7 @@ final class GameEngine {
         if DebugFlags.autopilot, let lane = autopilot.decide(sim, speed: speed, dt: dt) {
             sim.setTargetLane(lane)
         }
-        if gustsOn { gusts.tick(dt: dt, sim: &sim, speed: speed, session: session) } // wind gusts
+        gusts?.tick(dt: dt, sim: &sim, speed: speed, session: session) // wind gusts
         advanceWorld(dt: dt, spawning: true, collisions: true)
         ghostRun?.advance(dt: dt, distance: sim.distance, altitude: sim.plane.y) // ghost flight
         handleEvents()
@@ -485,7 +497,7 @@ final class GameEngine {
     }
 
     private func revive() {
-        if gustsOn { gusts.hold(session: session) } // wind gusts
+        gusts?.hold(session: session) // wind gusts
         endStreak()
         crash = CrashState()
         sim.revive()
@@ -504,7 +516,7 @@ final class GameEngine {
         var y = sim.plane.y
         p.pitch = tilt * 0.34
         p.roll = sinf(animTime * 1.7) * 0.035 - tilt * 0.08
-        if gustsOn, phase == .flying { p.roll += gusts.roll(time: animTime) } // wind gusts
+        if phase == .flying, let gusts { p.roll += gusts.roll(time: animTime) } // wind gusts
         y += sinf(animTime * 2.3) * 0.025
         let groundY = World.groundY + 0.2
 
