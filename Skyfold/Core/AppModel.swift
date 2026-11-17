@@ -42,8 +42,23 @@ final class AppModel {
         screen = .flight
     }
 
+    /// Daily route experiment: flies today's fixed route (its airport, difficulty and seeds), with the
+    /// chosen skin. The departure airport is not unlocked by starting there.
+    func startDailyRun(_ route: DailyRoute = .today) {
+        sanitizeLoadout()
+        run = RunSession(difficulty: route.difficulty,
+                         skin: PlaneSkin.get(settings.selectedSkin),
+                         startRoute: route.startRoute,
+                         timeOfDayMode: settings.timeOfDay,
+                         progress: progress,
+                         daily: route)
+        screen = .flight
+    }
+
     /// Restarts immediately with the same loadout (from the game-over card).
-    func restartRun() { startRun() }
+    func restartRun() {
+        if let daily = run?.daily { startDailyRun(daily) } else { startRun() }
+    }
 
     func exitToMenu() {
         run?.quit()

@@ -135,7 +135,7 @@ final class GameEngine {
         // leg's zero lands exactly where the countdown ends.
         let takeoffMeters = 1.5 * v0
         sim.reset(config: cfg, startDistance: -Double(takeoffMeters), lane: World.middleLane,
-                  seed: UInt64.random(in: 1...UInt64.max))
+                  seed: session.legSeed ?? UInt64.random(in: 1...UInt64.max))
         autopilot.reset()
         session.lane = World.middleLane
         queuedLane = 0
@@ -148,7 +148,7 @@ final class GameEngine {
         seenChosen = nil
         airportCamera = false
         r.camera.airportTarget = 0
-        r.setLeg(from: leg.from, to: leg.to, swap: !first, seed: UInt32(truncatingIfNeeded: session.legsCompleted &* 7 &+ leg.toRoute &* 13 &+ 3))
+        r.setLeg(from: leg.from, to: leg.to, swap: !first, seed: session.sceneSeed ?? UInt32(truncatingIfNeeded: session.legsCompleted &* 7 &+ leg.toRoute &* 13 &+ 3))
         r.setFog(effectiveFog)
         r.setGateResult(chosen: nil, kind: nil)
         originAnchor = first ? 7 : 0

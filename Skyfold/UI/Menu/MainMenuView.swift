@@ -23,6 +23,8 @@ struct MainMenuView: View {
     @State private var planeLive = true
     @State private var planeTask: Task<Void, Never>?
     @State private var didRunLaunchSwitches = false
+    /// Read once when the menu appears (Daily route experiment).
+    @State private var dailyOn = ExperimentStore.shared.isOn(.dailyRoute)
 
     var body: some View {
         ZStack {
@@ -60,10 +62,12 @@ struct MainMenuView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         header
-                        planeStage.frame(minHeight: 150)
+                        planeStage.frame(minHeight: dailyOn ? 100 : 150)
                         MenuBoardingPass(settings: model.settings, progress: model.progress, openPicker: openPicker)
+                            .fixedSize(horizontal: false, vertical: dailyOn)
                             .rotationEffect(.degrees(-0.9))
                             .padding(.bottom, 16)
+                        dailyTicket.padding(.bottom, 12)
                         flyButton
                     }
                     .padding(.horizontal, 20)
@@ -83,6 +87,7 @@ struct MainMenuView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     header
                     planeStage
+                    dailyTicket.padding(.trailing, 8).padding(.top, 6)
                 }
                 .padding(.leading, 6)
                 .padding(.trailing, 14)
@@ -151,6 +156,14 @@ struct MainMenuView: View {
         .allowsHitTesting(false)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("A paper plane, \(skin.name)")
+    }
+
+    /// Daily route experiment: the ticket under the boarding pass, only with the switch on.
+    @ViewBuilder private var dailyTicket: some View {
+        if dailyOn {
+            DailyRouteTicket { model.startDailyRun() }
+                .rotationEffect(.degrees(0.7))
+        }
     }
 
     private var flyButton: some View {
@@ -234,6 +247,7 @@ struct MainMenuView: View {
             library = screen
         }
         #if DEBUG
+        if dailyOn && DailyRouteDebug.startsDaily { await DailyRouteDebug.runAndQuit(model); return }
         // Screenshots only: -SkyfoldStartAirport N (with -SkyfoldUnlockAll YES) starts a run from route N.
         if UserDefaults.standard.object(forKey: "SkyfoldStartAirport") != nil {
             model.settings.selectedAirport = UserDefaults.standard.integer(forKey: "SkyfoldStartAirport")

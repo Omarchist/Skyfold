@@ -166,4 +166,13 @@ nonisolated struct GateOffer: Equatable, Sendable {
         let curse = ModifierID.curses.randomElement()!
         return GateOffer(options: [blessing, curse].shuffled(), chosenIndex: nil)
     }
+
+    /// The same draw from a seeded generator (the daily route), so every player sees the same gates.
+    static func make<G: RandomNumberGenerator>(allowSecondChances: Bool, using rng: inout G) -> GateOffer {
+        var blessings = ModifierID.blessings
+        if !allowSecondChances { blessings.removeAll { $0 == .paperShield || $0 == .secondWind } }
+        let blessing = blessings.randomElement(using: &rng)!
+        let curse = ModifierID.curses.randomElement(using: &rng)!
+        return GateOffer(options: [blessing, curse].shuffled(using: &rng), chosenIndex: nil)
+    }
 }

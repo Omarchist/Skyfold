@@ -100,8 +100,20 @@ final class RunSession {
     /// Highest streak this run.
     var bestStreak = 0
 
+    // Daily route experiment (nil for a normal run).
+    /// The fixed route this run flies, when it is a daily run.
+    let daily: DailyRoute?
+    /// Set when a daily run ends: the day's best after this run, and whether this run set it.
+    private(set) var dailyBest: Int?
+    private(set) var dailyIsBest = false
+    /// Obstacle seed the engine uses for the current leg; nil means pick one at random.
+    var legSeed: UInt64? { daily?.legSeed(legsCompleted) }
+    /// Scenery seed for the current leg, when it is a daily run.
+    var sceneSeed: UInt32? { daily?.sceneSeed(legsCompleted) }
+
     init(difficulty: Difficulty, skin: PlaneSkin, startRoute: Int,
-         timeOfDayMode: TimeOfDayMode, progress: ProgressStore) {
+         timeOfDayMode: TimeOfDayMode, progress: ProgressStore, daily: DailyRoute? = nil) {
+        self.daily = daily
         self.difficulty = difficulty
         self.skin = skin
         self.startRoute = startRoute
@@ -175,7 +187,8 @@ final class RunSession {
         let unlocks = progress.recordArrival(routeIndex: routeIndex)
         citiesReached += 1
         arrival = ArrivalReport(routeIndex: routeIndex, unlocks: unlocks, firstVisit: firstVisit)
-        gateOffer = GateOffer.make(allowSecondChances: difficulty.allowsSecondChances)
+        gateOffer = daily?.gateOffer(afterLeg: legsCompleted + 1, allowSecondChances: difficulty.allowsSecondChances)
+            ?? GateOffer.make(allowSecondChances: difficulty.allowsSecondChances)
         phase = .airport
     }
 
@@ -251,6 +264,10 @@ final class RunSession {
         result = RunResult(score: score, distance: totalDistance, stars: stars,
                            citiesReached: citiesReached, modifiers: modifiers,
                            isNewBest: best, difficulty: difficulty.id)
+        if let daily {
+            dailyIsBest = DailyBestStore.shared.record(score: score, for: daily)
+            dailyBest = DailyBestStore.shared.best(for: daily)
+        }
         phase = .gameOver
     }
 }

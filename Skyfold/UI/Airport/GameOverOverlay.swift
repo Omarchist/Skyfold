@@ -127,6 +127,7 @@ private struct GameOverStub: View {
                 .foregroundStyle(palette.inkSoft.color)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+            if session.daily != nil { DailyRouteResultLine(session: session) }
         }
     }
 
