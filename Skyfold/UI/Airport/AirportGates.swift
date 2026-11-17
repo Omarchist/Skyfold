@@ -276,7 +276,7 @@ struct AirportHangingSign: View {
             }
             Spacer(minLength: 0)
             Text(letter)
-                .font(.ticket(size.height * 0.58, weight: .heavy))
+                .font(.system(size: size.height * 0.58, weight: .heavy, design: .monospaced))
                 .foregroundStyle(state == .open ? text : hot)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)

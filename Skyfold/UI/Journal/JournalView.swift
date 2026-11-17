@@ -76,7 +76,7 @@ private struct LibraryJournalSummary: View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(label).font(.skyfold(15))
             DottedLeader()
-            Text(value).font(.ticket(15, weight: .semibold))
+            Text(value).font(.ticket(15, weight: .semibold)).lineLimit(1).fixedSize()
         }
         .padding(.vertical, 9)
         .background(alignment: .bottom) { RuleLine() }
@@ -118,7 +118,8 @@ private struct LibraryJournalEntry: View {
             Text(code)
                 .font(.ticket(11.5, weight: .semibold))
                 .foregroundStyle(count > 0 ? ink : palette.inkSoft.color)
-                .frame(width: 34, alignment: .leading)
+                .fixedSize()
+                .frame(minWidth: 34, alignment: .leading)
                 .padding(.top, 7)
             if count > 0 {
                 VStack(alignment: .leading, spacing: 3) {

@@ -137,7 +137,10 @@ struct LibraryToggleRow: View {
         Text(text)
             .signage(11.5, weight: .bold)
             .foregroundStyle(filled ? color : palette.inkSoft.color)
-            .frame(width: 46, height: 34)
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, 6)
+            .frame(minWidth: 46, minHeight: 34)
             .background(filled ? fill : palette.paper.color)
     }
 }

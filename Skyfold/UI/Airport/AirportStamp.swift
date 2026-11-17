@@ -23,6 +23,7 @@ struct AirportStamp: View {
             }
             .foregroundStyle(ink)
         }
+        .dynamicTypeSize(.large)
         .frame(width: diameter, height: diameter)
         .mask { AirportInkDropout(seed: "stamp-" + city.code) }
         .opacity(0.93)
@@ -106,7 +107,7 @@ private struct AirportStampRings: View {
             g.rotate(by: .radians(phi))
             g.translateBy(x: 0, y: -radius)
             if bottom { g.rotate(by: .radians(Double.pi)) }
-            let glyph = g.resolve(Text(String(ch)).font(.ticket(fontSize, weight: .bold)).foregroundStyle(color))
+            let glyph = g.resolve(Text(String(ch)).font(.system(size: fontSize, weight: .bold, design: .monospaced)).foregroundStyle(color))
             g.draw(glyph, at: .zero, anchor: .center)
         }
     }
