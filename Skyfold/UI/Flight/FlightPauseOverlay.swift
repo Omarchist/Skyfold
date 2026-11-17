@@ -68,6 +68,7 @@ struct FlightPauseOverlay: View {
             Text("Flight \(UIFormat.flightNumber(from: session.leg.fromRoute, to: session.leg.toRoute))")
                 .font(.display(landscape ? 26 : 30))
                 .foregroundStyle(palette.ink.color)
+                .accessibilityAddTraits(.isHeader)
             Text("\(session.origin.code) to \(session.destination.code)  \(FlightFormat.toGo(session.metersToGo)) to go")
                 .font(.ticket(13))
                 .foregroundStyle(palette.inkSoft.color)

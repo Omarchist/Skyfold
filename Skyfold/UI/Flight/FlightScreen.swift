@@ -115,7 +115,7 @@ private struct FlightHUDLayer: View {
             }
             FlightHint(session: session, settings: settings, progress: progress, landscape: landscape)
         }
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: showsHUD)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: showsHUD)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: session.phase == .countdown)
     }
 }
@@ -146,7 +146,7 @@ private struct FlightPhaseLayer: View {
                 EmptyView()
             }
         }
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.28), value: session.phase)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.28).delay(0.08), value: session.phase)
     }
 }
 

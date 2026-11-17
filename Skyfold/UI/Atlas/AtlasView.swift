@@ -76,7 +76,7 @@ private struct LibraryBoard: View {
     }
 
     private func unlocks(for city: City) -> String {
-        guard progress.hasVisited(city.index) else { return "—" }
+        guard progress.hasVisited(city.index) else { return "-" }
         if city.unlocks.isEmpty { return city.index == 0 ? "Home airport" : "Nothing new" }
         return city.unlocks.map(\.title).joined(separator: " · ")
     }

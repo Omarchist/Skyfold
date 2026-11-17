@@ -117,7 +117,7 @@ final class GameSettings {
         if audio { applyToServices() }
     }
 
-    private nonisolated struct Snapshot: Codable {
+    nonisolated struct Snapshot: Codable {
         var musicVolume: Double?
         var effectsVolume: Double?
         var hapticsEnabled: Bool?
@@ -131,6 +131,11 @@ final class GameSettings {
         var selectedDifficulty: DifficultyID?
         var selectedSkin: SkinID?
         var selectedAirport: Int?
+
+        enum CodingKeys: String, CodingKey {
+            case musicVolume, effectsVolume, hapticsEnabled, graphicsQuality, shadowMode, trailEffects
+            case showFPS, timeOfDay, controlScheme, showHints, selectedDifficulty, selectedSkin, selectedAirport
+        }
     }
 
     private func load() {
@@ -142,8 +147,8 @@ final class GameSettings {
     }
 
     private func apply(_ s: Snapshot) {
-        musicVolume = s.musicVolume ?? 0.6
-        effectsVolume = s.effectsVolume ?? 0.8
+        musicVolume = Self.unit(s.musicVolume, 0.6)
+        effectsVolume = Self.unit(s.effectsVolume, 0.8)
         hapticsEnabled = s.hapticsEnabled ?? true
         graphicsQuality = s.graphicsQuality ?? .balanced
         shadowMode = s.shadowMode ?? .flat
@@ -154,7 +159,12 @@ final class GameSettings {
         showHints = s.showHints ?? true
         selectedDifficulty = s.selectedDifficulty ?? .standard
         selectedSkin = s.selectedSkin ?? .classic
-        selectedAirport = s.selectedAirport ?? 0
+        selectedAirport = min(max(s.selectedAirport ?? 0, 0), Route.count - 1)
+    }
+
+    private static func unit(_ v: Double?, _ fallback: Double) -> Double {
+        guard let v, v.isFinite else { return fallback }
+        return min(max(v, 0), 1)
     }
 
     private func save() {
@@ -164,5 +174,27 @@ final class GameSettings {
             showFPS: showFPS, timeOfDay: timeOfDay, controlScheme: controlScheme, showHints: showHints,
             selectedDifficulty: selectedDifficulty, selectedSkin: selectedSkin, selectedAirport: selectedAirport)
         if let data = try? JSONEncoder().encode(snap) { defaults.set(data, forKey: Self.key) }
+    }
+}
+
+extension GameSettings.Snapshot {
+    /// A value that is missing or unreadable (a removed option, a wrong type) falls back to its
+    /// default on its own instead of resetting every setting.
+    nonisolated init(from decoder: Decoder) throws {
+        self.init()
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        musicVolume = try? c.decodeIfPresent(Double.self, forKey: .musicVolume)
+        effectsVolume = try? c.decodeIfPresent(Double.self, forKey: .effectsVolume)
+        hapticsEnabled = try? c.decodeIfPresent(Bool.self, forKey: .hapticsEnabled)
+        graphicsQuality = try? c.decodeIfPresent(GraphicsQuality.self, forKey: .graphicsQuality)
+        shadowMode = try? c.decodeIfPresent(ShadowMode.self, forKey: .shadowMode)
+        trailEffects = try? c.decodeIfPresent(Bool.self, forKey: .trailEffects)
+        showFPS = try? c.decodeIfPresent(Bool.self, forKey: .showFPS)
+        timeOfDay = try? c.decodeIfPresent(TimeOfDayMode.self, forKey: .timeOfDay)
+        controlScheme = try? c.decodeIfPresent(ControlScheme.self, forKey: .controlScheme)
+        showHints = try? c.decodeIfPresent(Bool.self, forKey: .showHints)
+        selectedDifficulty = try? c.decodeIfPresent(DifficultyID.self, forKey: .selectedDifficulty)
+        selectedSkin = try? c.decodeIfPresent(SkinID.self, forKey: .selectedSkin)
+        selectedAirport = try? c.decodeIfPresent(Int.self, forKey: .selectedAirport)
     }
 }

@@ -13,7 +13,7 @@ nonisolated enum Unlock: Hashable, Codable, Sendable {
         switch self {
         case .skin(let id): "\(PlaneSkin.get(id).name) skin"
         case .difficulty(let id): "\(Difficulty.get(id).name) mode"
-        case .airport(let i): "\(Route.cities[i].name) airport"
+        case .airport(let i): "\(Route.city(i).name) airport"
         }
     }
 
@@ -130,19 +130,33 @@ nonisolated struct LegPlan: Equatable, Sendable {
         startSpeed + (endSpeed - startSpeed) * Float(min(max(p, 0), 1))
     }
 
+    /// Metres of landscape the side camera shows ahead of the plane.
+    static let visibleAhead: Float = 23
+    /// Least warning (s) a player gets before something shown at the edge of the view arrives.
+    static let minWarningTime: Float = 0.8
+    /// No leg is flown faster than this, whatever the difficulty and however many Headwinds were taken:
+    /// `visibleAhead / minWarningTime`.
+    static let speedLimit: Float = visibleAhead / minWarningTime
+    /// Shortest leg (m) before the debug scale; stacked Shortcuts cannot shrink a leg below it.
+    static let minLength: Double = 300
+    /// Bounds on seconds per lane move, so stacked Nimble Creases or Soggy Papers stay playable.
+    static let laneSwitchRange: ClosedRange<Float> = 0.06...0.4
+
     static func plan(fromRoute: Int, legsCompleted: Int, startRoute: Int,
                      difficulty: Difficulty, tuning: RunTuning) -> LegPlan {
         // "Tier" grows with every leg flown, with later departure airports, and with each lap.
         let tier = Float(legsCompleted) + Float(startRoute) * 0.5 + Float(Route.lap(fromRoute)) * 2
-        let cap = difficulty.maxSpeed * tuning.speed
+        let cap = min(difficulty.maxSpeed * tuning.speed, speedLimit)
         let start = min((difficulty.baseSpeed + difficulty.speedPerLeg * tier) * tuning.speed, cap)
         let end = min(start + difficulty.speedRampInLeg * tuning.speed, cap)
-        let length = (700 + 220 * Double(legsCompleted) + 60 * Double(startRoute))
-            * difficulty.legLengthScale * tuning.legLength * DebugFlags.legLengthScale
+        let planned = (700 + 220 * Double(legsCompleted) + 60 * Double(startRoute))
+            * difficulty.legLengthScale * tuning.legLength
+        let length = max(planned, minLength) * DebugFlags.legLengthScale
         let density = difficulty.density * tuning.density * (1 + 0.06 * tier)
         return LegPlan(fromRoute: fromRoute, toRoute: fromRoute + 1, length: length,
                        startSpeed: start, endSpeed: end, density: density,
-                       laneSwitchTime: difficulty.laneSwitchTime * tuning.laneSwitchTime)
+                       laneSwitchTime: min(max(difficulty.laneSwitchTime * tuning.laneSwitchTime,
+                                                laneSwitchRange.lowerBound), laneSwitchRange.upperBound))
     }
 }
 
@@ -197,7 +211,7 @@ nonisolated struct Difficulty: Identifiable, Sendable {
                    allowsSecondChances: false),
     ]
 
-    static func get(_ id: DifficultyID) -> Difficulty { all.first { $0.id == id }! }
+    static func get(_ id: DifficultyID) -> Difficulty { all.first { $0.id == id } ?? all[1] }
 }
 
 // MARK: - Plane skins
@@ -239,5 +253,5 @@ nonisolated struct PlaneSkin: Identifiable, Sendable {
                   trail: RGBA(hex: 0xE5A03A), unlockHint: "Land back in Lisbon after a full lap."),
     ]
 
-    static func get(_ id: SkinID) -> PlaneSkin { all.first { $0.id == id }! }
+    static func get(_ id: SkinID) -> PlaneSkin { all.first { $0.id == id } ?? all[0] }
 }
