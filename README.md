@@ -18,6 +18,52 @@ of your run, the other curses it.
 3. To run on your own iPhone, choose your team under *Signing & Capabilities* and change the
    bundle identifier (`com.henry.skyfold`) if needed.
 
+## Develop on Linux
+
+Use Swift 6.2 or later and run the following commands from the repo root.
+[Install Swift on Linux](https://www.swift.org/install/linux/)
+
+```bash
+swift build
+swift test
+find Skyfold -name '*.swift' -exec swiftc -frontend -parse -swift-version 5 {} +
+```
+
+The Swift package compiles the same core models, flight rules, and audio synthesis that
+ship in the app. The test flies a seeded leg with the autopilot. The last command checks
+Swift syntax across the app. Xcode is required to typecheck SwiftUI, RealityKit and other
+iOS APIs and to produce the iPhone app.
+
+### Run the Xcode build from Linux
+
+On the Mac, open Xcode 27 or later once and install its iOS platform support. Select that
+Xcode under *Xcode → Settings → Locations → Command Line Tools*. Enable Remote Login
+for your macOS user. On Linux, use the address shown in Sharing.
+[Set up Remote Login](https://support.apple.com/guide/mac-help/allow-a-remote-computer-to-access-your-mac-mchlp1066/mac)
+
+```bash
+ssh-copy-id user@mac-host
+git config --local skyfold.mac user@mac-host
+Tools/build-ios.sh
+```
+
+The script uses SSH, rsync and flock on Linux. It sends your current app sources and Xcode
+project, including uncommitted edits and new files. Use the same SSH destination across
+agents so their builds queue on Linux. Each checkout keeps an incremental build cache
+under `~/.cache/skyfold-builds/` on the Mac. Pass a different address or SSH alias as
+an argument, or set `SKYFOLD_MAC`, to override the local Git setting.
+
+The command prints the path to the unsigned simulator app on the Mac. Boot an iPhone in
+Simulator, then run the following commands on the Mac using the printed path.
+
+```bash
+xcrun simctl install booted "/path/to/Skyfold.app"
+xcrun simctl launch booted com.henry.skyfold
+```
+
+Run `Tools/build-ios.sh` with no arguments to do the same headless build from a Mac
+checkout. For a physical iPhone, use the signing and run steps above.
+
 ### Debug launch arguments
 
 Add them in *Product › Scheme › Edit Scheme › Run › Arguments*, or pass them to `simctl launch`:

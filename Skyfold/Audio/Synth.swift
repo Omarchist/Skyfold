@@ -186,7 +186,7 @@ nonisolated enum DSP {
 }
 
 /// SplitMix64: tiny, fast, seedable. All "randomness" in the audio is deterministic.
-nonisolated struct SeededRandom {
+nonisolated struct SynthRandom {
     private var state: UInt64
 
     init(seed: UInt64) { state = seed ^ 0x5DEE_CE66_D1CE_4E5B }
@@ -590,7 +590,7 @@ nonisolated enum Voice {
     /// Total length is `attack + hold + release`.
     static func pad(freq: Double, amp: Float, attack: Double, hold: Double, release: Double,
                     table: Wavetable, detuneCents: Double, voices: Int, cutoff: Double,
-                    rng: inout SeededRandom) -> [Float] {
+                    rng: inout SynthRandom) -> [Float] {
         let total = attack + hold + release
         let n = DSP.samples(total)
         var out = [Float](repeating: 0, count: n)
@@ -638,7 +638,7 @@ nonisolated enum Voice {
 
     /// Short highpassed noise tick (a very soft shaker).
     static func tick(seed: UInt64, amp: Float, decay: Double, cutoff: Double) -> [Float] {
-        var rng = SeededRandom(seed: seed)
+        var rng = SynthRandom(seed: seed)
         var f = SVF(cutoff: cutoff, q: 0.8)
         let sr = DSP.sampleRate
         var out = DSP.generate(DSP.samples(decay * 6)) { i in
@@ -652,7 +652,7 @@ nonisolated enum Voice {
     /// Bandpassed noise with an exponential center sweep. `env` maps 0...1 progress to gain.
     static func noiseSweep(seed: UInt64, length: Double, from f0: Double, to f1: Double,
                            q: Double, env: (Double) -> Double) -> [Float] {
-        var rng = SeededRandom(seed: seed)
+        var rng = SynthRandom(seed: seed)
         let n = DSP.samples(length)
         var f = SVF(cutoff: f0, q: q)
         return DSP.generate(n) { i in
@@ -724,7 +724,7 @@ nonisolated enum SoundSynth {
     /// Crumpled paper (grains of filtered noise) plus a low thump, ~500 ms.
     private static func crash(_ v: Int) -> [Float] {
         let n = DSP.samples(0.55)
-        var rng = SeededRandom(seed: 0xC2A5 &+ UInt64(v) &* 7919)
+        var rng = SynthRandom(seed: 0xC2A5 &+ UInt64(v) &* 7919)
         var paper = [Float](repeating: 0, count: n)
         for _ in 0..<40 {
             let t0 = 0.44 * pow(rng.unit(), 1.6)
@@ -762,7 +762,7 @@ nonisolated enum SoundSynth {
     /// Bright pop with a short shimmer.
     private static func shieldBreak() -> [Float] {
         let n = DSP.samples(0.65)
-        var rng = SeededRandom(seed: 0x5E1D)
+        var rng = SynthRandom(seed: 0x5E1D)
         var click = SVF(cutoff: 3800, q: 0.9)
         var phase = 0.0
         var out = DSP.generate(n) { i in
@@ -799,7 +799,7 @@ nonisolated enum SoundSynth {
             Voice.Partial(ratio: 2.43, amp: 0.32, decayScale: 0.45),
             Voice.Partial(ratio: 4.07, amp: 0.12, decayScale: 0.2),
         ], amp: 1, decay: 0.020, attack: 0.0006, length: 0.09)
-        var rng = SeededRandom(seed: 0x71C)
+        var rng = SynthRandom(seed: 0x71C)
         var lp = OnePole(cutoff: 2500)
         DSP.accumulate(&out, at: 0, count: out.count) { i in
             0.18 * lp.lowpass(rng.bipolar()) * Float(exp(-Double(i) / sr / 0.0012))
@@ -866,7 +866,7 @@ nonisolated enum SoundSynth {
         OnePole.lowpass(&slide, cutoff: 3000)
         DSP.normalize(&slide, peak: 1)
 
-        var rng = SeededRandom(seed: 0xC4EA)
+        var rng = SynthRandom(seed: 0xC4EA)
         var r1 = SVF(cutoff: 480, q: 9), r2 = SVF(cutoff: 1080, q: 7)
         var nextImpulse = 0.08
         var creak = DSP.generate(n) { i in
@@ -927,7 +927,7 @@ nonisolated enum SoundSynth {
     private static func curse() -> [Float] {
         let n = DSP.samples(1.5)
         let env: (Double) -> Double = { t in DSP.smooth(t / 0.75) * DSP.smooth((1.32 - t) / 0.5) }
-        var rng = SeededRandom(seed: 0xC0125E)
+        var rng = SynthRandom(seed: 0xC0125E)
         var tone = [Float](repeating: 0, count: n)
         // (Hz, beat rate Hz, level). The beats are slow enough to hear as a wobble, fast
         // enough to turn over a few times in 1.4 s. The upper pair carries the sound on a
@@ -970,7 +970,7 @@ nonisolated enum SoundSynth {
             DSP.mix(Voice.glass(freq: DSP.hz(m), amp: 0.3, decay: 0.28, length: 0.66),
                     into: &out, at: DSP.samples(0.31))
         }
-        var rng = SeededRandom(seed: 0x5BA2C)
+        var rng = SynthRandom(seed: 0x5BA2C)
         let sparkle = [2093.0, 2349.3, 2637.0, 3136.0, 3520.0, 4186.0]
         for _ in 0..<14 {
             let t0 = rng.range(0.16, 0.62)
@@ -987,7 +987,7 @@ nonisolated enum SoundSynth {
 
     /// Tiny soft click, 30 ms.
     private static func uiTap() -> [Float] {
-        var rng = SeededRandom(seed: 0x7A9)
+        var rng = SynthRandom(seed: 0x7A9)
         var lp = OnePole(cutoff: 3500)
         var out = DSP.generate(DSP.samples(0.03)) { i in
             let t = Double(i) / sr
@@ -1074,7 +1074,7 @@ nonisolated struct LoopMix {
     /// Wind / room tone: bandpassed noise whose center drifts with an LFO that completes
     /// a whole number of cycles per loop. Processed circularly, so it loops seamlessly.
     func wind(seed: UInt64, center: Double, octaves: Double, cycles: Int, q: Double, amp: Float) -> [Float] {
-        var rng = SeededRandom(seed: seed)
+        var rng = SynthRandom(seed: seed)
         let noise = rng.noise(length)
         var f = SVF(cutoff: center, q: q)
         let w = 2 * Double.pi * Double(cycles) / Double(length)
@@ -1176,7 +1176,7 @@ nonisolated enum MusicSynth {
     private static func menuDay() -> [Float] {
         let spec = spec(.menuDay)
         var mix = LoopMix(spec: spec)
-        var rng = SeededRandom(seed: 0xDA1)
+        var rng = SynthRandom(seed: 0xDA1)
         let beat = 60 / spec.bpm
         // Fmaj7 | Dm7 | B♭maj7 | Cadd9
         let chords = [[53, 57, 60, 64], [50, 53, 57, 60], [46, 50, 53, 57], [48, 55, 62, 64]]
@@ -1213,7 +1213,7 @@ nonisolated enum MusicSynth {
     private static func menuNight() -> [Float] {
         let spec = spec(.menuNight)
         var mix = LoopMix(spec: spec)
-        var rng = SeededRandom(seed: 0x4E1647)
+        var rng = SynthRandom(seed: 0x4E1647)
         let beat = 60 / spec.bpm
         // Dm(add9) for two bars, then B♭ with an E on top (the tritone makes it uneasy).
         let chords = [[50, 53, 57, 64], [46, 53, 57, 64]]
@@ -1252,7 +1252,7 @@ nonisolated enum MusicSynth {
     private static func flightDay() -> [Float] {
         let spec = spec(.flightDay)
         var mix = LoopMix(spec: spec)
-        var rng = SeededRandom(seed: 0xF1D4)
+        var rng = SynthRandom(seed: 0xF1D4)
         let beat = 60 / spec.bpm
         // C | G/B | Am | F | C | G
         let chords = [[60, 64, 67], [59, 62, 67], [57, 60, 64], [53, 57, 60], [60, 64, 67], [55, 59, 62]]
@@ -1300,7 +1300,7 @@ nonisolated enum MusicSynth {
     private static func flightNight() -> [Float] {
         let spec = spec(.flightNight)
         var mix = LoopMix(spec: spec)
-        var rng = SeededRandom(seed: 0xF1A7)
+        var rng = SynthRandom(seed: 0xF1A7)
         let beat = 60 / spec.bpm
         // Am | F | Dm | E | Am | B♭ (the Neapolitan B♭ leans back into Am, eerily)
         let chords = [[57, 60, 64], [53, 57, 60], [50, 53, 57], [52, 56, 59], [57, 60, 64], [50, 53, 58]]
@@ -1352,7 +1352,7 @@ nonisolated enum MusicSynth {
     private static func airport() -> [Float] {
         let spec = spec(.airport)
         var mix = LoopMix(spec: spec)
-        var rng = SeededRandom(seed: 0xA1270)
+        var rng = SynthRandom(seed: 0xA1270)
         let beat = 60 / spec.bpm
         // Cmaj9 for two bars, Fmaj9 for two bars.
         let chords = [[48, 55, 59, 62, 64], [41, 57, 60, 64, 67]]

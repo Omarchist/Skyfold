@@ -26,7 +26,7 @@ struct RenderBudget {
     }
 }
 
-/// The ground card, its printed stripes, the near decor and the fog cards.
+/// The ground card, its printed fields, the near decor and the fog cards.
 ///
 /// Decor lives on a loop of track coordinates. Every item has a landscape position (all of it
 /// behind the lanes, so the side camera sees an open stage) and a portrait position (flanking the
@@ -36,6 +36,12 @@ final class SceneryField {
     let root = Entity()
 
     private enum Kind { case hill, tree, house, cloud }
+
+    private struct Field {
+        let part: StyledPart
+        let offset: Float
+        let z: Float
+    }
 
     private final class Item {
         let kind: Kind
@@ -67,15 +73,15 @@ final class SceneryField {
 
     private let ground: Entity
     private let groundPart: StyledPart?
-    private var stripes: [Entity] = []
-    private var stripeParts: [StyledPart] = []
+    private var fields: [Field] = []
     private var items: [Item] = []
     private var veilsSide: [Entity] = []
     private var veilsChase: [Entity] = []
     private var veilParts: [StyledPart] = []
     private let veilXSide: [Float] = [9, 14.5, 21, 29]
     private let veilXChase: [Float] = [14, 20, 28, 38]
-    private static let stripeCount = 12
+    private static let fieldCount = 12
+    private static let fieldSpacing: Float = 14
 
     init(library: ModelLibrary, style: RenderStyle, budget: RenderBudget) {
         root.name = "scenery"
@@ -89,21 +95,34 @@ final class SceneryField {
         groundPart = StyledPart(entity: ground, slot: style.slot(.groundCard))
         root.addChild(ground)
 
-        // Printed stripes, alternate bands a shade darker. They carry the sense of speed on the ground.
-        let stripeMesh = PaperMesh.box([7, 0.03, 54])
-        for _ in 0..<Self.stripeCount {
-            let e = Entity()
-            e.components.set(ModelComponent(mesh: stripeMesh, materials: [style.slot(.groundStripe).material]))
-            root.addChild(e)
-            stripes.append(e)
-            if let p = StyledPart(entity: e, slot: style.slot(.groundStripe)) { stripeParts.append(p) }
-        }
-
+        buildFields(style: style)
         buildDecor(library: library, style: style, budget: budget)
         buildVeils(style: style)
     }
 
     // MARK: Build
+
+    private func buildFields(style: RenderStyle) {
+        let mesh = PaperMesh.box([1, 0.03, 1])
+        let roles: [RenderRole] = [.fieldA, .fieldB, .fieldC]
+        let seams: [Float] = [-12, -3, 4, -7]
+        for row in 0..<Self.fieldCount {
+            let seam = seams[row % seams.count]
+            // Stagger the printed plots so their edges do not trace a continuous road.
+            let bounds: [(Float, Float)] = [(-33, seam - 1), (seam + 1, 21)]
+            for (column, (nearZ, farZ)) in bounds.enumerated() {
+                let slot = style.slot(roles[(row + 2 * column) % roles.count])
+                let tile = Entity()
+                tile.components.set(ModelComponent(mesh: mesh, materials: [slot.material]))
+                tile.scale = [Float(8 + (row + column) % 3), 1, farZ - nearZ]
+                root.addChild(tile)
+                if let part = StyledPart(entity: tile, slot: slot) {
+                    fields.append(Field(part: part, offset: Float(row) * Self.fieldSpacing + Float(4 * column),
+                                        z: (nearZ + farZ) / 2))
+                }
+            }
+        }
+    }
 
     private func buildDecor(library: ModelLibrary, style: RenderStyle, budget: RenderBudget) {
         func spawn(_ kind: Kind, count: Int, makeModel: () -> (Entity, StyledParts)) {
@@ -198,12 +217,12 @@ final class SceneryField {
     func update(scroll: Double, blend: Float, fog: Float, quality: GraphicsQuality) {
         let sc = Float(scroll.truncatingRemainder(dividingBy: 100_000))
 
-        // Stripes.
-        let stripeLoop = 14 * Float(Self.stripeCount)
-        for (i, e) in stripes.enumerated() {
-            var x = (Float(i) * 14 - sc).truncatingRemainder(dividingBy: stripeLoop)
-            if x < 0 { x += stripeLoop }
-            e.position = [x - 30 + 3.5, World.groundY + Layer.stripe - 0.015, -6]
+        let fieldLoop = Self.fieldSpacing * Float(Self.fieldCount)
+        for field in fields {
+            var x = (field.offset - sc).truncatingRemainder(dividingBy: fieldLoop)
+            if x < 0 { x += fieldLoop }
+            field.part.entity.position = [x + Self.loopStart, World.groundY + Layer.field - 0.015, field.z]
+            field.part.sync()
         }
 
         // Decor.
@@ -235,7 +254,6 @@ final class SceneryField {
         for e in veilsChase where e.isEnabled != chase { e.isEnabled = chase }
         if on { for p in veilParts { p.sync() } }
         groundPart?.sync()
-        for p in stripeParts { p.sync() }
     }
 
     /// Re-rolls an item's size and place for a new lap, from a stable hash so it is the same every run.

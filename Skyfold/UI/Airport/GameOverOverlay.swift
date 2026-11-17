@@ -29,15 +29,14 @@ private struct GameOverStub: View {
     @State private var chose = false
 
     var body: some View {
-        GeometryReader { geo in
-            let metrics = AirportMetrics(size: geo.size, insets: geo.safeAreaInsets)
+        AirportScreenReader { metrics in
             ViewThatFits(in: .vertical) {
                 layout(metrics)
                 ScrollView(showsIndicators: false) { layout(metrics) }
                     .defaultScrollAnchor(.center)
             }
             .padding(metrics.edgeInsets)
-            .frame(width: geo.size.width, height: geo.size.height, alignment: .center)
+            .frame(width: metrics.size.width, height: metrics.size.height, alignment: .center)
             .opacity(shown ? 1 : 0)
             .offset(y: shown || reduceMotion ? 0 : -28)
             .allowsHitTesting(ready)

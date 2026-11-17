@@ -1,7 +1,7 @@
 """Render a 512x512 preview of every exported model, plus a contact sheet.
 
     Blender --background --factory-startup --python Tools/Blender/render_previews.py \
-        -- [model names...] [--extra-views DIR]
+        -- [model names...] [--models-dir DIR] [--preview-dir DIR] [--extra-views DIR]
 
 Each .usdz is imported back from Skyfold/Resources/Models (so the preview shows
 what the game will load), lit with EEVEE (one hard key sun + flat ambient, so the
@@ -11,6 +11,7 @@ above and toward the nose side +X). Writes previews/<name>.png and
 previews/_all.png. --extra-views also writes side/back/top/front views
 of each model into DIR for closer inspection.
 """
+import argparse
 import math
 import os
 import sys
@@ -75,7 +76,7 @@ def add_sun(scene, name, direction, energy, hex_color="#FFFFFF", angle=1.5):
     return obj
 
 
-def setup_render(size=SIZE):
+def setup_render(size=SIZE, background=BACKGROUND, ambient="#FFF3E6", key_energy=2.1):
     scene = bpy.context.scene
     scene.render.engine = "BLENDER_EEVEE"
     scene.eevee.taa_render_samples = 32
@@ -89,9 +90,9 @@ def setup_render(size=SIZE):
     scene.render.image_settings.color_depth = "8"
     scene.view_settings.view_transform = "Standard"
     scene.view_settings.look = "None"
-    setup_world(scene, BACKGROUND, "#FFF3E6", 0.50)
+    setup_world(scene, background, ambient, 0.50)
     # Hard key light from the upper front-left, as if the sun is behind the camera.
-    add_sun(scene, "Key", (-0.45, -0.75, 1.0), 2.1)
+    add_sun(scene, "Key", (-0.45, -0.75, 1.0), key_energy)
     return scene
 
 
@@ -167,7 +168,7 @@ def model_tris(objs):
     return sum(C.tri_count(o) for o in objs)
 
 
-def render_model(path, extra_dir=None):
+def render_model(path, preview_dir, extra_dir=None):
     name = os.path.splitext(os.path.basename(path))[0]
     C.reset_scene()
     scene = setup_render()
@@ -175,7 +176,7 @@ def render_model(path, extra_dir=None):
     tris = model_tris(objs)
     cam, _ = fit_camera(scene, objs, VIEWS["3q"])
     add_label(scene, cam, f"{name}  {tris} tris")
-    out = os.path.join(PREVIEW_DIR, f"{name}.png")
+    out = os.path.join(preview_dir, f"{name}.png")
     render(scene, out)
     print(f"[preview] {out}")
     if extra_dir:
@@ -213,25 +214,28 @@ def contact_sheet(paths, out_path, cols=4, tile=256):
 
 
 def main():
-    args = C.script_args()
-    extra_dir = None
-    if "--extra-views" in args:
-        i = args.index("--extra-views")
-        extra_dir = os.path.abspath(args[i + 1])
-        args = args[:i] + args[i + 2:]
-    names = [a for a in args if not a.startswith("--")]
-    files = sorted(f for f in os.listdir(C.MODELS_DIR) if f.endswith(".usdz"))
-    if names:
-        files = [f for f in files if os.path.splitext(f)[0] in names]
-    os.makedirs(PREVIEW_DIR, exist_ok=True)
-    for f in files:
-        render_model(os.path.join(C.MODELS_DIR, f), extra_dir)
-    all_previews = sorted(os.path.join(PREVIEW_DIR, f) for f in os.listdir(PREVIEW_DIR)
-                          if f.endswith(".png") and not f.startswith("_")
-                          and not f.startswith("icon")
-                          and os.path.exists(os.path.join(C.MODELS_DIR, f[:-4] + ".usdz")))
-    if all_previews:
-        contact_sheet(all_previews, os.path.join(PREVIEW_DIR, "_all.png"))
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("models", nargs="*")
+    parser.add_argument("--models-dir", default=C.MODELS_DIR)
+    parser.add_argument("--preview-dir", default=PREVIEW_DIR)
+    parser.add_argument("--extra-views")
+    args = parser.parse_args(C.script_args())
+    model_names = sorted(f[:-5] for f in os.listdir(args.models_dir) if f.endswith(".usdz"))
+    if not model_names:
+        parser.error(f"no USDZ files in {args.models_dir}")
+    missing = sorted(set(args.models) - set(model_names))
+    if missing:
+        parser.error(f"unknown models: {', '.join(missing)}")
+
+    preview_dir = os.path.abspath(args.preview_dir)
+    os.makedirs(preview_dir, exist_ok=True)
+    for name in args.models or model_names:
+        render_model(os.path.abspath(os.path.join(args.models_dir, f"{name}.usdz")),
+                     preview_dir, args.extra_views)
+    all_previews = [os.path.join(preview_dir, f"{name}.png") for name in model_names]
+    contact_sheet([path for path in all_previews if os.path.isfile(path)],
+                  os.path.join(preview_dir, "_all.png"))
 
 
-main()
+if __name__ == "__main__":
+    main()

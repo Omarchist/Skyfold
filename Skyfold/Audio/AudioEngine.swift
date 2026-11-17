@@ -344,12 +344,12 @@ final class AudioEngine: SoundService {
 
     private func installMusic(_ mood: MusicMood, samples: [Float], thenPrewarm: Bool) {
         musicInFlight.remove(mood)
-        if let buffer = makeBuffer(samples) {
-            musicBuffers[mood] = buffer
-            if desiredMood == mood { crossfade(to: mood) }
-        } else {
+        guard let buffer = makeBuffer(samples) else {
             log.error("Could not allocate the \(mood.rawValue, privacy: .public) music buffer")
+            return
         }
+        musicBuffers[mood] = buffer
+        if desiredMood == mood { crossfade(to: mood) }
         if thenPrewarm { prewarmNextMusic() }
     }
 
@@ -365,13 +365,16 @@ final class AudioEngine: SoundService {
     private func crossfade(to mood: MusicMood?) {
         guard engine.isRunning, !musicVoices.isEmpty else { return }   // restart() resumes it
         var incoming: MusicVoice?
-        if let mood, let buffer = musicBuffers[mood] {
+        if let mood {
+            guard let buffer = musicBuffers[mood] else { return }
             if let current = musicVoices.first(where: { $0.mood == mood }) {
                 incoming = current                       // already playing (maybe fading out)
-            } else if let free = musicVoices.min(by: { $0.level < $1.level }) {
+            } else {
+                // Keep the fade in progress if both voices are audible. Once one goes
+                // quiet, stepFades starts the latest requested mood if its buffer is ready.
+                guard let free = musicVoices.first(where: { $0.level == 0 }) else { return }
                 free.player.stop()
                 free.player.volume = 0
-                free.level = 0
                 free.player.scheduleBuffer(buffer, at: nil, options: .loops, completionHandler: nil)
                 free.player.play()
                 free.mood = mood
@@ -405,6 +408,7 @@ final class AudioEngine: SoundService {
         let duckTarget: Float = silencesMusicForOtherAudio && otherAudioPlaying ? 0 : 1
         duckLevel = Self.approach(duckLevel, duckTarget, by: Float(dt / Self.duckSeconds))
         var moving = duckLevel != duckTarget
+        var freedVoice = false
         let step = Float(dt / Self.crossfadeSeconds)
         for voice in musicVoices {
             voice.level = Self.approach(voice.level, voice.target, by: step)
@@ -413,7 +417,13 @@ final class AudioEngine: SoundService {
             if voice.level == 0, voice.target == 0, voice.mood != nil {
                 voice.player.stop()
                 voice.mood = nil
+                freedVoice = true
             }
+        }
+        if freedVoice, let mood = desiredMood, musicBuffers[mood] != nil,
+           !musicVoices.contains(where: { $0.mood == mood }) {
+            crossfade(to: mood)
+            return true
         }
         return moving
     }

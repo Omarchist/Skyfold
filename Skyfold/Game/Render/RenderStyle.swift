@@ -259,7 +259,7 @@ final class RenderStyle {
         set(.gateDoor, lit(0x2C4F9E, 0x7D93C6))
         set(.gateSign, lit(0x2A211B, 0x2A2F44))
 
-        set(.shadow, p.ink.mixed(with: RGBA(hex: 0x000000), 0.0), 0.2)
+        set(.shadow, p.ink.mixed(with: p.ground.scaled(0.4), night), 0.2)
         set(.trail, p.ink.mixed(with: p.paper, 0.1), 0.38)
         let f = min(max(fogAmount, 0), 0.9)
         set(.fog, p.fog, f > 0 ? 0.28 * f / 0.45 : 0)

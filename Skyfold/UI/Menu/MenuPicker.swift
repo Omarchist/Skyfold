@@ -80,12 +80,6 @@ struct MenuPickerSlip: View {
         .padding(.vertical, landscape ? 10 : 0)
     }
 
-    private func skinNote(_ skin: PlaneSkin, open: Bool) -> String {
-        if !open { return skin.unlockHint }
-        if let city = UnlockHint.city(for: .skin(skin.id)) { return "Unlocked in \(city.name)." }
-        return skin.id == .midnight ? "Earned on a full lap." : "Standard issue."
-    }
-
     // MARK: Rows
 
     @ViewBuilder private var rows: some View {
@@ -122,7 +116,7 @@ struct MenuPickerSlip: View {
             ForEach(PlaneSkin.all) { s in
                 let open = progress.isUnlocked(s.id)
                 PickerRow(title: s.name,
-                          subtitle: skinNote(s, open: open),
+                          subtitle: UnlockHint.skin(s, unlocked: open),
                           selected: settings.selectedSkin == s.id,
                           locked: !open,
                           choose: { settings.selectedSkin = s.id; onClose() }) {
@@ -136,7 +130,7 @@ struct MenuPickerSlip: View {
 }
 
 /// One ruled row: a leading mark, a name, a line of small print, and a tick box on the right.
-private struct PickerRow<Leading: View>: View {
+struct PickerRow<Leading: View>: View {
     let title: String
     let subtitle: String
     let selected: Bool

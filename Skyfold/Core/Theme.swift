@@ -1,5 +1,7 @@
-import SwiftUI
+#if canImport(SwiftUI)
 import CoreGraphics
+import SwiftUI
+#endif
 
 /// A platform-neutral sRGB color that can feed SwiftUI, CoreGraphics and RealityKit.
 nonisolated struct RGBA: Hashable, Sendable, Codable {
@@ -33,14 +35,6 @@ nonisolated struct RGBA: Hashable, Sendable, Codable {
     func scaled(_ factor: Double) -> RGBA {
         RGBA(min(r * factor, 1), min(g * factor, 1), min(b * factor, 1), a)
     }
-
-    var color: Color { Color(.sRGB, red: r, green: g, blue: b, opacity: a) }
-    var cgColor: CGColor { CGColor(srgbRed: r, green: g, blue: b, alpha: a) }
-    #if canImport(UIKit)
-    var platformColor: UIColor { UIColor(red: r, green: g, blue: b, alpha: a) }
-    #elseif canImport(AppKit)
-    var platformColor: NSColor { NSColor(srgbRed: r, green: g, blue: b, alpha: a) }
-    #endif
 
     /// Relative luminance (sRGB approximation), handy for picking text color.
     var luminance: Double { 0.2126 * r + 0.7152 * g + 0.0722 * b }
@@ -153,6 +147,17 @@ nonisolated struct Palette: Equatable, Sendable {
     var isDark: Bool { paper.luminance < 0.4 }
 }
 
+#if canImport(SwiftUI)
+nonisolated extension RGBA {
+    var color: Color { Color(.sRGB, red: r, green: g, blue: b, opacity: a) }
+    var cgColor: CGColor { CGColor(srgbRed: r, green: g, blue: b, alpha: a) }
+    #if canImport(UIKit)
+    var platformColor: UIColor { UIColor(red: r, green: g, blue: b, alpha: a) }
+    #elseif canImport(AppKit)
+    var platformColor: NSColor { NSColor(srgbRed: r, green: g, blue: b, alpha: a) }
+    #endif
+}
+
 extension EnvironmentValues {
     /// The current UI palette. RootView injects it from the menu/run nightness.
     @Entry var palette: Palette = .day
@@ -176,3 +181,4 @@ extension Font {
         .system(size: size, weight: weight, design: .monospaced)
     }
 }
+#endif

@@ -22,6 +22,9 @@ struct FlightView: View {
     }
 
     private var engine: GameEngine { holder.engine(session: session, settings: settings) }
+    private var backdropPaused: Bool {
+        session.phase == .paused || session.phase == .crashed || session.phase == .gameOver
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -33,7 +36,7 @@ struct FlightView: View {
                             clock: engine.clock,
                             quality: settings.graphicsQuality,
                             horizonFraction: CGFloat(RigMath.horizonFraction(landscape: landscape, aspect: aspect)),
-                            paused: session.phase == .paused)
+                            paused: backdropPaused)
                 RealityView { content in
                     await engine.build(into: &content)
                 }

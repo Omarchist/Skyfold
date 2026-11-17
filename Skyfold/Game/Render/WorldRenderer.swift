@@ -10,7 +10,7 @@ struct RenderFrame {
     var cameraDt: Float = 0
     /// Animation clock (s).
     var time: Float = 0
-    /// Meters flown this run (drives the ground stripes and decor).
+    /// Meters flown this run (drives the printed fields and decor).
     var scroll: Double = 0
     /// Meters the world moved this frame.
     var dx: Float = 0
@@ -23,9 +23,10 @@ struct RenderFrame {
     var originAnchor: Float = -400
     /// 0...1: how far the destination skyline has risen.
     var destReveal: Float = 0
+    var destinationAirport = false
+    var originRunway = false
+    var originAirport = false
     var gateChosen: Int?
-    /// The gate that was opened at the airport we just left (its doors stay open behind us).
-    var originGate: Int?
     var doorOpen: Float = 0
     /// True from the landing to the end of the airport stop: the camera pulls back for the gates.
     var airportCamera = false
@@ -173,9 +174,10 @@ final class WorldRenderer {
 
         scenery.update(scroll: f.scroll, blend: blend, fog: f.fog, quality: quality)
         destination.place(anchorX: f.destAnchor, blend: blend, reveal: f.destReveal, time: f.time,
+                          showRunway: f.destinationAirport, showAirport: f.destinationAirport,
                           chosen: f.gateChosen, open: f.doorOpen)
-        origin.place(anchorX: f.originAnchor, blend: blend, reveal: 1, time: f.time, chosen: f.originGate,
-                     open: f.originGate == nil ? 0 : 1)
+        origin.place(anchorX: f.originAnchor, blend: blend, reveal: 1, time: f.time,
+                     showRunway: f.originRunway, showAirport: f.originAirport, chosen: nil, open: 0)
 
         let flat = shadowMode == .flat
         obstacles.sync(sim: sim, time: f.time, blend: blend, shadowsOn: flat)

@@ -50,6 +50,12 @@ final class AppModel {
         screen = .menu
     }
 
+    /// Clears the logbook and unlocks, including any selected loadout that became locked.
+    func resetProgress() {
+        progress.resetAll()
+        sanitizeLoadout()
+    }
+
     /// Nightness for menu screens (0 = day, 1 = night).
     func menuNightness(date: Date = .now) -> Double {
         TimeOfDay.menuNightness(mode: settings.timeOfDay, date: date)

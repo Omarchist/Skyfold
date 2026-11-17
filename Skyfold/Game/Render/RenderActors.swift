@@ -232,11 +232,11 @@ final class ObstaclePool {
             * simd_quatf(angle: pitch, axis: axisX)
         a.holder.transform = Transform(scale: [s, s, s], rotation: q, translation: [o.x, y, 0])
         if let sh = a.shadow {
-            sh.isEnabled = shadowsOn
-            if shadowsOn {
+            sh.isEnabled = shadowsOn && grow > 0.01
+            if sh.isEnabled {
                 let h = max(y - World.groundY, 0)
                 let r: Float = o.kind == .thunderhead ? 0.95 : (o.kind == .stormCloud ? 0.7 : 0.45)
-                let k = (1 - min(h * 0.04, 0.3)) / s
+                let k = (1 - min(h * 0.04, 0.3)) * grow / s
                 // Counter the holder's rotation and scale so the shadow stays flat on the ground.
                 sh.transform = Transform(scale: [r * k, 1, r * 1.5 * k], rotation: q.inverse,
                                          translation: q.inverse.act([0.4, World.groundY + Layer.shadow - y, 0] / s))

@@ -2,17 +2,30 @@ import SwiftUI
 
 @main
 struct SkyfoldApp: App {
-    @State private var model = AppModel()
+    @State private var model: AppModel
 
     init() {
-        // Real audio/haptics services are installed here once they exist (see Core/Services.swift).
+        let audio = AudioEngine.shared
+        Services.sound = audio
+        Services.haptics = Haptics.shared
+
+        let model = AppModel()
+        _model = State(initialValue: model)
+        model.settings.applyToServices()
+        audio.start()
     }
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(model)
-                .onAppear { model.settings.applyToServices() }
+                #if os(iOS)
+                .background {
+                    HapticsAnchor()
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+                #endif
         }
     }
 }

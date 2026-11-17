@@ -143,6 +143,12 @@ enum UnlockHint {
     static func airport(_ index: Int) -> String {
         "Land in \(Route.city(index).name) to open."
     }
+
+    static func skin(_ skin: PlaneSkin, unlocked: Bool) -> String {
+        if !unlocked { return skin.unlockHint }
+        if let city = city(for: .skin(skin.id)) { return "Unlocked in \(city.name)." }
+        return skin.id == .midnight ? "Earned on a full lap." : "Standard issue."
+    }
 }
 
 // MARK: - Seeded imperfection

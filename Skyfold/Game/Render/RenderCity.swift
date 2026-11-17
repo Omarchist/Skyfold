@@ -44,6 +44,7 @@ final class CityGroup {
     private let skylineRoot = Entity()
 
     // Airport set.
+    private let runwayRoot = Entity()
     private let airportRoot = Entity()
     private var gateEntities: [Entity] = []
     private var doorsL: [Entity?] = [nil, nil]
@@ -70,28 +71,33 @@ final class CityGroup {
         self.shapes = shapes
         root.name = "city\(slotIndex)"
         root.addChild(skylineRoot)
+        root.addChild(runwayRoot)
         root.addChild(airportRoot)
 
         // Flat ground pieces of the airport: runway, its painted lines and the apron.
+        let runwayStart: Float = -54
+        let runwayEnd: Float = 24
         runway = Entity()
-        runway.components.set(ModelComponent(mesh: PaperMesh.box([120, 0.04, 4.4]), materials: [style.slot(.runway).material]))
-        runway.position = [-30, World.groundY + Layer.runway - 0.02, 0]
+        runway.components.set(ModelComponent(mesh: PaperMesh.box([runwayEnd - runwayStart, 0.04, 4.4]),
+                                              materials: [style.slot(.runway).material]))
+        runway.position = [(runwayStart + runwayEnd) / 2, World.groundY + Layer.runway - 0.02, 0]
         apron = Entity()
         apron.components.set(ModelComponent(mesh: PaperMesh.box([34, 0.035, 13]), materials: [style.slot(.apron).material]))
         apron.position = [2, World.groundY + Layer.apron - 0.0175, -3]
         lines = Entity()
         var lb = PaperMesh.Builder()
-        for i in 0..<26 {
-            let x = -86 + Float(i) * 4.4
+        for i in 0..<17 {
+            let x = runwayStart + 3 + Float(i) * 4.4
             lb.box(lo: [x, 0, -0.1], hi: [x + 2.0, 0.015, 0.1])
         }
-        // Edge ticks along both sides of the runway.
-        lb.box(lo: [-90, 0, 1.9], hi: [30, 0.015, 1.97])
-        lb.box(lo: [-90, 0, -1.97], hi: [30, 0.015, -1.9])
+        lb.box(lo: [runwayStart, 0, 1.9], hi: [runwayEnd, 0.015, 1.97])
+        lb.box(lo: [runwayStart, 0, -1.97], hi: [runwayEnd, 0.015, -1.9])
         lines.components.set(ModelComponent(mesh: lb.mesh(), materials: [style.slot(.runwayLine).material]))
         lines.position = [0, World.groundY + Layer.line - 0.015, 0]
+        runwayRoot.addChild(runway)
+        runwayRoot.addChild(lines)
+        airportRoot.addChild(apron)
         for (e, role) in [(runway, RenderRole.runway), (apron, .apron), (lines, .runwayLine)] {
-            airportRoot.addChild(e)
             if let p = StyledPart(entity: e, slot: style.slot(role)) { flatParts.append(p) }
         }
         buildAirportModels()
@@ -202,13 +208,17 @@ final class CityGroup {
         }
     }
 
-    /// `open`: 0...1 swing of the chosen gate's doors (-1 for no gate chosen).
-    func place(anchorX: Float, blend: Float, reveal: Float, time: Float, chosen: Int?, open: Float) {
+    /// `open`: 0...1 swing of the chosen gate's doors.
+    func place(anchorX: Float, blend: Float, reveal: Float, time: Float,
+               showRunway: Bool, showAirport: Bool, chosen: Int?, open: Float) {
         self.anchorX = anchorX
         let visible = anchorX > -110 && anchorX < 230
         if root.isEnabled != visible { root.isEnabled = visible }
         guard visible else { return }
         root.position = [anchorX, 0, 0]
+        if runwayRoot.isEnabled != showRunway { runwayRoot.isEnabled = showRunway }
+        if airportRoot.isEnabled != showAirport { airportRoot.isEnabled = showAirport }
+        if showRunway || showAirport { for p in flatParts { p.sync() } }
 
         // Skyline.
         for b in blocks {
@@ -225,6 +235,7 @@ final class CityGroup {
             b.parts.sync()
         }
 
+        guard showAirport else { return }
         // Gates: A on the left half, B on the right half of the screen.
         let gateScale: Float = 1.3
         for g in 0..<2 {
@@ -257,7 +268,6 @@ final class CityGroup {
                                     translation: pL + (pP - pL) * blend)
         }
         airportParts.sync()
-        for p in flatParts { p.sync() }
     }
 
     func hideAll() {

@@ -24,7 +24,6 @@ final class GameEngine {
     private var seenLeg: Int
     private var seenRevive: Int
     private var lastPhase: RunPhase
-    private var firstLeg = true
 
     // View.
     private var viewWidth: Float = 0
@@ -35,14 +34,13 @@ final class GameEngine {
     private var scroll: Double = 0
     private var speedNow: Float = 0
     private var lastDx: Float = 0
-    private var scoreAcc: Double = 0
+    private var score: FlightScore
     private var totalDist: Double = 0
 
     // Countdown and takeoff.
     private var countdownT: Float = 0
     private var shownCountdown = 4
     private var takeoffRun = true
-    private var takeoffMeters: Float = 0
     private var queuedLane = 0
 
     // Landing and airport.
@@ -54,7 +52,6 @@ final class GameEngine {
     private var originAnchor: Float = -400
     private var seenChosen: Int?
     private var doorT: Float = 0
-    private var originGate: Int?
     private var rampUp: Float = 1
 
     // Crash.
@@ -69,7 +66,6 @@ final class GameEngine {
     // Publishing.
     private var publishTimer: Float = 0
     private var fpsSmoothed: Float = 60
-    private var lastLandingSound = false
 
     // The camera stays in the airport rig from the landing until the next takeoff run is under way.
     private var airportCamera = false
@@ -81,6 +77,8 @@ final class GameEngine {
         self.session = session
         self.settings = settings
         sim = FlightSimulation(config: FlightConfig(leg: session.leg, tuning: session.tuning))
+        score = FlightScore(carriedPoints: session.score)
+        totalDist = session.totalDistance
         seenLeg = session.legSerial
         seenRevive = session.reviveSerial
         lastPhase = session.phase
@@ -130,7 +128,7 @@ final class GameEngine {
         let v0 = max(leg.speed(atProgress: 0), 1)
         // The takeoff run covers 1.5 x v0 meters (speed eases 0 to v0 over the countdown), so the
         // leg's zero lands exactly where the countdown ends.
-        takeoffMeters = 1.5 * v0
+        let takeoffMeters = 1.5 * v0
         sim.reset(config: cfg, startDistance: -Double(takeoffMeters), lane: World.middleLane,
                   seed: UInt64.random(in: 1...UInt64.max))
         autopilot.reset()
@@ -142,18 +140,15 @@ final class GameEngine {
         shownCountdown = 4
         landT = 0
         doorT = 0
-        originGate = first ? nil : seenChosen
         seenChosen = nil
         airportCamera = false
         r.camera.airportTarget = 0
         r.setLeg(from: leg.from, to: leg.to, swap: !first, seed: UInt32(truncatingIfNeeded: session.legsCompleted &* 7 &+ leg.toRoute &* 13 &+ 3))
         r.setFog(effectiveFog)
         r.setGateResult(chosen: nil, kind: nil)
-        originAnchor = first ? 7 : originAnchor
-        if !first { originAnchor = 0 }
+        originAnchor = first ? 7 : 0
         destAnchor = destinationAnchor()
         speedNow = 0
-        firstLeg = false
     }
 
     /// Where the gate centre is, in meters ahead of the plane, for the current leg distance.
@@ -215,11 +210,13 @@ final class GameEngine {
         case .airport:
             tickAirport(dt)
         case .crashed, .gameOver:
+            animDt = 0
+            speedNow = 0
             tickCrash(dt)
         }
         animTime += animDt
 
-        updateNightness(dt)
+        updateNightness(animDt)
         publish(dt)
 
         clock.scroll = scroll
@@ -238,8 +235,10 @@ final class GameEngine {
         f.destAnchor = destAnchor
         f.originAnchor = originAnchor
         f.destReveal = destinationReveal()
+        f.destinationAirport = sim.distance >= session.leg.length - sim.config.clearApproach
+        f.originRunway = originAnchor > -45
+        f.originAirport = session.legsCompleted == 0 && originAnchor > -34
         f.gateChosen = session.gateOffer?.chosenIndex ?? (phase == .airport ? seenChosen : nil)
-        f.originGate = originGate
         f.doorOpen = smooth(doorT / 0.8)
         f.airportCamera = airportCamera
         r.render(f, sim: sim)
@@ -327,10 +326,10 @@ final class GameEngine {
         destAnchor = destinationAnchor()
         originAnchor -= dx
         if session.phase == .flying {
-            let counted = max(0, sim.distance) - max(0, before)
+            let counted = min(session.leg.length, sim.distance) - max(0, before)
             if counted > 0 {
                 totalDist += counted
-                scoreAcc += counted * session.scoreMultiplier
+                score.addDistance(counted, multiplier: session.scoreMultiplier)
             }
         }
     }
@@ -345,7 +344,7 @@ final class GameEngine {
                 Services.haptics.play(.laneSwitch)
             case .starCollected:
                 session.stars += 1
-                scoreAcc += Double(session.starPoints)
+                score.addStar(points: session.starPoints)
                 Services.sound.play(.star)
                 Services.haptics.play(.star)
             case .nearMiss:
@@ -355,8 +354,7 @@ final class GameEngine {
                 if session.registerHit() {
                     Services.sound.play(.shieldBreak)
                     Services.haptics.play(.shield)
-                    sim.removeObstacle(slot: slot)
-                    sim.invulnerability = 1.0
+                    sim.absorbHit(slot: slot)
                     renderer?.firePopRing()
                     renderer?.kickCamera(0.5)
                 } else {
@@ -432,8 +430,7 @@ final class GameEngine {
 
     private func revive() {
         crash = CrashState()
-        sim.clearObstacles(within: 25)
-        sim.invulnerability = 2
+        sim.revive()
         sim.placePlane(lane: sim.plane.lane)
         session.lane = sim.plane.lane
         takeoffRun = false
@@ -475,7 +472,7 @@ final class GameEngine {
             p.roll = 0
         }
         p.y = y
-        if sim.invulnerability > 0, phase == .flying || phase == .countdown {
+        if sim.isProtected, phase == .flying || phase == .countdown {
             p.visible = Int(animTime * 11) % 2 == 0
         }
         return p
@@ -528,10 +525,12 @@ final class GameEngine {
     }
 
     private func flushValues() {
-        let d = max(0, sim.distance)
-        if abs(session.legDistance - d) > 0.05 { session.legDistance = d }
+        let d = min(session.leg.length, max(0, sim.distance))
+        if abs(session.legDistance - d) > 0.05 || (d == session.leg.length && d != session.legDistance) {
+            session.legDistance = d
+        }
         if abs(session.totalDistance - totalDist) > 0.05 { session.totalDistance = totalDist }
-        let s = Int(scoreAcc)
+        let s = score.points
         if session.score != s { session.score = s }
         let sp = (speedNow * 20).rounded() / 20
         if abs(session.speed - sp) > 0.01 { session.speed = sp }

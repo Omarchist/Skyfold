@@ -108,8 +108,7 @@ private struct AirportFlow: View {
     private var chosenIndex: Int? { session.gateOffer?.chosenIndex }
 
     var body: some View {
-        GeometryReader { geo in
-            let metrics = AirportMetrics(size: geo.size, insets: geo.safeAreaInsets)
+        AirportScreenReader { metrics in
             ZStack(alignment: .topLeading) {
                 switch stage {
                 case .arrival:
@@ -124,7 +123,7 @@ private struct AirportFlow: View {
                         .transition(.opacity)
                 }
             }
-            .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
+            .frame(width: metrics.size.width, height: metrics.size.height, alignment: .topLeading)
             // Only the scrim bleeds under the notch and home indicator; the paper stays inside
             // the safe area. It also swallows touches, so nothing reaches the flight view.
             .background {

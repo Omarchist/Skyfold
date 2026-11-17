@@ -4,6 +4,9 @@ DerivedData/
 xcuserdata/
 *.xcuserstate
 
+# Swift Package Manager
+.build/
+
 # Tooling output
 Tools/Blender/__pycache__/
 __pycache__/

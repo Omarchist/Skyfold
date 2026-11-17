@@ -16,7 +16,6 @@ In the USD file each part's local axes are therefore the game axes.
 import math
 import os
 import random
-import shutil
 import sys
 import tempfile
 import zlib
@@ -306,6 +305,11 @@ class MeshBuilder:
 
     def cylinder(self, r, depth, **kw):
         return self.cone(r, r, depth, **kw)
+
+    def ico(self, radius, center=(0, 0, 0), subdiv=1):
+        bmesh.ops.create_icosphere(self.bm, radius=radius, subdivisions=subdiv,
+                                   matrix=Matrix.Translation(Vector(center)))
+        return self
 
     def rod(self, p0, p1, r0, r1=None, segments=4, cap=True):
         """Cone/cylinder running from point p0 to point p1."""
@@ -828,19 +832,16 @@ def export_usdz(name, max_tris=TRI_BUDGET, out_dir=None):
     out_dir = out_dir or output_dir()
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, f"{name}.usdz")
-    tmp = tempfile.mkdtemp(prefix="skyfold_usd_")
-    try:
+    with tempfile.TemporaryDirectory(prefix=".skyfold_usd_", dir=out_dir) as tmp:
         usdc = os.path.join(tmp, f"{name}.usdc")
+        usdz = os.path.join(tmp, f"{name}.usdz")
         result = bpy.ops.wm.usd_export(filepath=usdc, **USD_EXPORT_SETTINGS)
         if "FINISHED" not in result:
             raise RuntimeError(f"USD export failed: {result}")
         _postprocess_usd(usdc)
-        if os.path.exists(out_path):
-            os.remove(out_path)
-        if not UsdUtils.CreateNewUsdzPackage(Sdf.AssetPath(usdc), out_path):
+        if not UsdUtils.CreateNewUsdzPackage(Sdf.AssetPath(usdc), usdz):
             raise RuntimeError("USDZ packaging failed")
-    finally:
-        shutil.rmtree(tmp, ignore_errors=True)
+        os.replace(usdz, out_path)
 
     lo, hi = world_bbox(objs)  # now in Y-up game coordinates
     size = hi - lo

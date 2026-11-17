@@ -131,6 +131,7 @@ struct FlightSimulation {
         guardUntil = -.infinity
         invulnerability = 0
         rng = SplitMix64(seed: seed)
+        nextID = 1
         distance = startDistance
         let l = min(max(lane, 0), World.laneCount - 1)
         plane = PlaneState()
