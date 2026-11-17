@@ -15,10 +15,13 @@ struct FlightHUD: View {
     private let nearMiss = ExperimentStore.shared.isOn(.nearMissBonus)
     /// Experiment: the ghost flight is on for this run.
     private let ghost = ExperimentStore.shared.isOn(.ghostFlight)
+    /// Experiment: wind gusts are on for this run.
+    private let gusts = ExperimentStore.shared.isOn(.windGusts)
 
     var body: some View {
         ZStack {
             if ghost { GhostNote(session: session, landscape: landscape) }
+            if gusts { GustLayer(session: session, landscape: landscape) }
             Group {
                 if landscape {
                     VStack(alignment: .leading, spacing: 8) {

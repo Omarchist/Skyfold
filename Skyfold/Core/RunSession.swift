@@ -106,6 +106,14 @@ final class RunSession {
     /// Set when this run's track was saved as the new ghost.
     var ghostSaved = false
 
+    // Wind gusts experiment (written by the engine; stays 0 with the switch off).
+    /// +1 while a gust from below is announced, -1 from above, 0 when none is.
+    var gustWarning = 0
+    /// Bumped by each announced gust.
+    var gustSerial = 0
+    /// Gusts that pushed the plane this run.
+    var gustPushes = 0
+
     // Daily route experiment (nil for a normal run).
     /// The fixed route this run flies, when it is a daily run.
     let daily: DailyRoute?

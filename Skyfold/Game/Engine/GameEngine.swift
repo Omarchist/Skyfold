@@ -45,6 +45,10 @@ final class GameEngine {
     // Ghost flight experiment: nil unless the switch is on for this run.
     private var ghostRun: GhostFlightRun?
 
+    // Wind gusts experiment, read once when the run starts.
+    private let gustsOn = ExperimentStore.shared.isOn(.windGusts)
+    private let gusts = GustDirector()
+
     // Countdown and takeoff.
     private var countdownT: Float = 0
     private var shownCountdown = 4
@@ -141,6 +145,7 @@ final class GameEngine {
         sim.reset(config: cfg, startDistance: -Double(takeoffMeters), lane: World.middleLane,
                   seed: session.legSeed ?? UInt64.random(in: 1...UInt64.max))
         autopilot.reset()
+        if gustsOn { gusts.reset(seed: session.legSeed ?? UInt64.random(in: 1...UInt64.max), session: session) } // wind gusts
         session.lane = World.middleLane
         queuedLane = 0
         crash = CrashState()
@@ -322,6 +327,7 @@ final class GameEngine {
         if DebugFlags.autopilot, let lane = autopilot.decide(sim, speed: speed, dt: dt) {
             sim.setTargetLane(lane)
         }
+        if gustsOn { gusts.tick(dt: dt, sim: &sim, speed: speed, session: session) } // wind gusts
         advanceWorld(dt: dt, spawning: true, collisions: true)
         ghostRun?.advance(dt: dt, distance: sim.distance, altitude: sim.plane.y) // ghost flight
         handleEvents()
@@ -472,6 +478,7 @@ final class GameEngine {
     }
 
     private func revive() {
+        if gustsOn { gusts.hold(session: session) } // wind gusts
         endStreak()
         crash = CrashState()
         sim.revive()
@@ -490,6 +497,7 @@ final class GameEngine {
         var y = sim.plane.y
         p.pitch = tilt * 0.34
         p.roll = sinf(animTime * 1.7) * 0.035 - tilt * 0.08
+        if gustsOn, phase == .flying { p.roll += gusts.roll(time: animTime) } // wind gusts
         y += sinf(animTime * 2.3) * 0.025
         let groundY = World.groundY + 0.2
 
