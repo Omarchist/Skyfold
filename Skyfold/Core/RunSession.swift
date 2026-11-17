@@ -100,6 +100,12 @@ final class RunSession {
     /// Highest streak this run.
     var bestStreak = 0
 
+    // Ghost flight experiment (written by the engine; stays nil/false with the switch off).
+    /// "GHOST +40 m" while the ghost is off screen, else nil.
+    var ghostNote: String?
+    /// Set when this run's track was saved as the new ghost.
+    var ghostSaved = false
+
     // Daily route experiment (nil for a normal run).
     /// The fixed route this run flies, when it is a daily run.
     let daily: DailyRoute?

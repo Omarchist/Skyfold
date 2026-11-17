@@ -42,6 +42,9 @@ final class GameEngine {
     private var streak = NearMissStreak()
     private var closeCalls = CloseCallDetector()
 
+    // Ghost flight experiment: nil unless the switch is on for this run.
+    private var ghostRun: GhostFlightRun?
+
     // Countdown and takeoff.
     private var countdownT: Float = 0
     private var shownCountdown = 4
@@ -89,6 +92,7 @@ final class GameEngine {
         lastPhase = session.phase
         nightness = session.nightness
         nightTarget = session.nightness
+        ghostRun = GhostFlightRun(session: session) // ghost flight
     }
 
     /// Fog from the Fog Bank curse. Debug builds can force it with the `HarnessFog` launch argument.
@@ -152,6 +156,7 @@ final class GameEngine {
         r.setFog(effectiveFog)
         r.setGateResult(chosen: nil, kind: nil)
         originAnchor = first ? 7 : 0
+        ghostRun?.beginLeg() // ghost flight
         destAnchor = destinationAnchor()
         speedNow = 0
     }
@@ -246,6 +251,8 @@ final class GameEngine {
         f.gateChosen = session.gateOffer?.chosenIndex ?? (phase == .airport ? seenChosen : nil)
         f.doorOpen = smooth(doorT / 0.8)
         f.airportCamera = airportCamera
+        f.ghost = ghostRun?.frame(distance: sim.distance, landscape: viewWidth > viewHeight,
+                                  aspect: viewWidth / max(viewHeight, 1)) // ghost flight
         r.render(f, sim: sim)
     }
 
@@ -265,6 +272,8 @@ final class GameEngine {
             rampUp = speedNow < 0.5 * session.leg.speed(atProgress: 0) ? 0 : 1
         case .airport:
             speedNow = 0
+        case .gameOver:
+            ghostRun?.finish() // ghost flight
         default:
             break
         }
@@ -314,6 +323,7 @@ final class GameEngine {
             sim.setTargetLane(lane)
         }
         advanceWorld(dt: dt, spawning: true, collisions: true)
+        ghostRun?.advance(dt: dt, distance: sim.distance, altitude: sim.plane.y) // ghost flight
         handleEvents()
         if nearMissOn, session.phase == .flying { tickStreak(dt) }
         guard session.phase == .flying else { return }

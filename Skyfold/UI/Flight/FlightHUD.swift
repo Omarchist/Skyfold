@@ -13,9 +13,12 @@ struct FlightHUD: View {
     var countdownInColumn = false
     /// Experiment: the near-miss bonus is on for this run.
     private let nearMiss = ExperimentStore.shared.isOn(.nearMissBonus)
+    /// Experiment: the ghost flight is on for this run.
+    private let ghost = ExperimentStore.shared.isOn(.ghostFlight)
 
     var body: some View {
         ZStack {
+            if ghost { GhostNote(session: session, landscape: landscape) }
             Group {
                 if landscape {
                     VStack(alignment: .leading, spacing: 8) {

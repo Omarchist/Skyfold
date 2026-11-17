@@ -30,6 +30,8 @@ struct RenderFrame {
     var doorOpen: Float = 0
     /// True from the landing to the end of the airport stop: the camera pulls back for the gates.
     var airportCamera = false
+    /// Ghost flight experiment: where the ghost plane is this frame, nil for none.
+    var ghost: GhostFrame?
 }
 
 /// Builds and drives the 3D diorama. Owns every entity; the engine only hands it numbers.
@@ -48,6 +50,7 @@ final class WorldRenderer {
     private let trail: TrailPool
     private let ring: PopRing
     private let plane: PlaneActor
+    private let ghost: GhostActor? // ghost flight experiment
     private let cities: [CityGroup]
     private var destIndex = 1
 
@@ -70,6 +73,7 @@ final class WorldRenderer {
         trail = TrailPool(shapes: shapes, style: style)
         ring = PopRing(shapes: shapes, style: style)
         plane = PlaneActor(library: library, style: style, shapes: shapes)
+        ghost = ExperimentStore.shared.isOn(.ghostFlight) ? GhostActor(library: library) : nil
         cities = [CityGroup(slotIndex: 0, library: library, style: style, shapes: shapes),
                   CityGroup(slotIndex: 1, library: library, style: style, shapes: shapes)]
 
@@ -79,6 +83,7 @@ final class WorldRenderer {
         root.addChild(trail.root)
         root.addChild(obstacles.root)
         root.addChild(stars.root)
+        if let ghost { root.addChild(ghost.root) } // ghost flight, drawn before the plane
         root.addChild(plane.root)
         root.addChild(ring.root)
         root.addChild(light)
@@ -189,6 +194,7 @@ final class WorldRenderer {
         pose.roll += (1 - blend) * 0.5
         plane.apply(pose, shadowsOn: flat, side: 1 - blend)
         ring.update(dt: f.dt, at: f.plane.y, blend: blend)
+        ghost?.apply(f.ghost, blend: blend, palette: palette, nightness: style.nightness) // ghost flight
     }
 
     func firePopRing() { ring.fire() }
