@@ -15,6 +15,8 @@ final class GameEngine {
 
     private(set) var renderer: WorldRenderer?
     private var subscriptions: [EventSubscription] = []
+    /// True while `build` waits for the models, so a second call cannot build a second world.
+    private var building = false
 
     // Rules.
     private var sim: FlightSimulation
@@ -99,7 +101,9 @@ final class GameEngine {
 
     /// Builds the world and starts listening to the frame event. Called once from the RealityView.
     func build(into content: inout RealityViewCameraContent) async {
-        guard renderer == nil else { return }
+        guard renderer == nil, !building else { return }
+        building = true
+        defer { building = false }
         await ModelLibrary.shared.load()
         let r = WorldRenderer(settings: settings, skin: session.skin)
         r.attach(to: &content)
@@ -201,6 +205,7 @@ final class GameEngine {
         switch phase {
         case .paused:
             animDt = 0
+            speedNow = 0
         case .countdown:
             tickCountdown(dt)
         case .flying:
@@ -256,6 +261,8 @@ final class GameEngine {
             }
         case .flying:
             takeoffRun = false
+            // A pause in the first moments of a takeoff must not leave the airport camera on.
+            airportCamera = false
             // Starting from rest (after a pause or a revive): ease the world up to speed.
             rampUp = speedNow < 0.5 * session.leg.speed(atProgress: 0) ? 0 : 1
         case .airport:
