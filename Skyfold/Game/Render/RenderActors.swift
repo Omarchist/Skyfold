@@ -147,8 +147,14 @@ final class ObstacleActor {
     var isFlat: Bool { kind == .kite || kind == .stormCloud || kind == .thunderhead }
 }
 
-/// Fixed pools of obstacle visuals, one set per kind. Nothing is created after init.
+/// Pools of obstacle visuals, one set per kind, sized so that nothing is created in normal flight.
+/// The rules simulation never put more than 6 obstacles of one kind (12 in all) in the world at once,
+/// at any difficulty with Storm Front twice and Restless Flock three times, but it can hold 48. So a
+/// kind that runs dry grows by one visual instead of leaving a solid obstacle invisible.
 final class ObstaclePool {
+    private let library: ModelLibrary
+    private let style: RenderStyle
+    private let shapes: RenderShapes
     private var all: [ObstacleActor] = []
     private var free: [[ObstacleActor]] = Array(repeating: [], count: ObstacleKind.allCases.count)
     private var bound: [ObstacleActor?] = Array(repeating: nil, count: FlightSimulation.obstacleCapacity)
@@ -166,15 +172,21 @@ final class ObstaclePool {
     }
 
     init(library: ModelLibrary, style: RenderStyle, shapes: RenderShapes) {
+        self.library = library
+        self.style = style
+        self.shapes = shapes
         root.name = "obstacles"
         for kind in ObstacleKind.allCases {
-            for _ in 0..<Self.count(for: kind) {
-                let a = ObstacleActor(kind: kind, library: library, style: style, shapes: shapes)
-                root.addChild(a.holder)
-                all.append(a)
-                free[kind.rawValue].append(a)
-            }
+            for _ in 0..<Self.count(for: kind) { addVisual(kind) }
         }
+    }
+
+    private func addVisual(_ kind: ObstacleKind) {
+        let a = ObstacleActor(kind: kind, library: library, style: style, shapes: shapes)
+        a.holder.isEnabled = false
+        root.addChild(a.holder)
+        all.append(a)
+        free[kind.rawValue].append(a)
     }
 
     func releaseAll() {
@@ -190,6 +202,7 @@ final class ObstaclePool {
     }
 
     private func acquire(_ kind: ObstacleKind, id: UInt32) -> ObstacleActor? {
+        if free[kind.rawValue].isEmpty { addVisual(kind) } // never leave a solid obstacle unseen
         guard let a = free[kind.rawValue].popLast() else { return nil }
         a.boundID = id
         a.yawJitter = (FlightMath.hash01(id, 11) - 0.5) * 0.26
