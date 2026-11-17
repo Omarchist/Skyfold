@@ -11,3 +11,6 @@ xcuserdata/
 Tools/Blender/__pycache__/
 __pycache__/
 .DS_Store
+
+# Simulator screenshots
+Screenshots/
