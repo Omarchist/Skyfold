@@ -37,6 +37,11 @@ final class GameEngine {
     private var score: FlightScore
     private var totalDist: Double = 0
 
+    // Near-miss bonus experiment, read once when the run starts.
+    private let nearMissOn = ExperimentStore.shared.isOn(.nearMissBonus)
+    private var streak = NearMissStreak()
+    private var closeCalls = CloseCallDetector()
+
     // Countdown and takeoff.
     private var countdownT: Float = 0
     private var shownCountdown = 4
@@ -310,6 +315,7 @@ final class GameEngine {
         }
         advanceWorld(dt: dt, spawning: true, collisions: true)
         handleEvents()
+        if nearMissOn, session.phase == .flying { tickStreak(dt) }
         guard session.phase == .flying else { return }
         if sim.distance >= leg.length {
             startLanding()
@@ -348,8 +354,10 @@ final class GameEngine {
                 Services.sound.play(.star)
                 Services.haptics.play(.star)
             case .nearMiss:
-                Services.haptics.play(.selection)
+                // With the bonus on, `tickStreak` feels every close call, this one included.
+                if !nearMissOn { Services.haptics.play(.selection) }
             case .hit(let slot):
+                endStreak()
                 flushValues()
                 if session.registerHit() {
                     Services.sound.play(.shieldBreak)
@@ -368,9 +376,34 @@ final class GameEngine {
         }
     }
 
+    // MARK: Near-miss bonus (experiment)
+
+    /// Ages the streak and pays each close pass the rules just finished counting.
+    private func tickStreak(_ dt: Float) {
+        if streak.advance(dt: dt) { session.streakLevel = 0 }
+        let found = closeCalls.scan(sim.obstacles)
+        for _ in 0..<found {
+            let points = streak.registerNearMiss(multiplier: session.scoreMultiplier)
+            score.addBonus(points: points)
+            session.streakLevel = streak.level
+            session.streakAward = points
+            session.streakSerial += 1
+            session.bestStreak = max(session.bestStreak, streak.best)
+            Services.sound.play(.uiTap)
+            Services.haptics.play(.selection)
+        }
+    }
+
+    private func endStreak() {
+        guard nearMissOn else { return }
+        streak.end()
+        if session.streakLevel != 0 { session.streakLevel = 0 }
+    }
+
     // MARK: Landing
 
     private func startLanding() {
+        endStreak()
         let leg = session.leg
         landT = 0
         landStartSpeed = leg.speed(atProgress: 1)
@@ -429,6 +462,7 @@ final class GameEngine {
     }
 
     private func revive() {
+        endStreak()
         crash = CrashState()
         sim.revive()
         sim.placePlane(lane: sim.plane.lane)

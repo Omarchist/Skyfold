@@ -11,6 +11,8 @@ struct FlightHUD: View {
     let landscape: Bool
     /// Portrait draws the 3, 2, 1 inside the column, under the marks, so it can never run into them.
     var countdownInColumn = false
+    /// Experiment: the near-miss bonus is on for this run.
+    private let nearMiss = ExperimentStore.shared.isOn(.nearMissBonus)
 
     var body: some View {
         ZStack {
@@ -30,6 +32,7 @@ struct FlightHUD: View {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack(alignment: .top) {
                             FlightScoreTag(session: session)
+                            if nearMiss { NearMissTag(session: session).padding(.leading, 2).padding(.top, 4) }
                             Spacer(minLength: 8)
                             FlightPauseButton(session: session)
                         }
@@ -47,6 +50,12 @@ struct FlightHUD: View {
             .padding(.horizontal, 14)
             .padding(.top, 6)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .overlay(alignment: .topTrailing) {
+                // Landscape has no free space beside the score ticket, so the stamp sits under the pause key.
+                if nearMiss, landscape {
+                    NearMissTag(session: session).padding(.top, 58).padding(.horizontal, 14)
+                }
+            }
 
             if settings.showFPS {
                 FlightFPSLabel(session: session)

@@ -160,6 +160,10 @@ private struct GameOverStub: View {
         }
     }
 
+    @ViewBuilder private var bestStreak: some View {
+        if ExperimentStore.shared.isOn(.nearMissBonus) { BestStreakLine(session: session) }
+    }
+
     private var fields: some View {
         HStack(alignment: .top, spacing: 0) {
             field("Distance", UIFormat.distance(result.distance))
@@ -240,6 +244,7 @@ private struct GameOverStub: View {
                 scoreBlock(size: 62)
                 RuleLine()
                 fields
+                bestStreak
                 RuleLine()
                 VStack(alignment: .leading, spacing: 12) {
                     modifierList("Blessings", kind: .blessing)
@@ -282,6 +287,7 @@ private struct GameOverStub: View {
                 header
                 scoreBlock(size: 54)
                 fields
+                bestStreak
                 HStack(alignment: .top, spacing: 16) {
                     modifierList("Blessings", kind: .blessing)
                     modifierList("Curses", kind: .curse)

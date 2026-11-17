@@ -90,6 +90,16 @@ final class RunSession {
     /// Frames per second, written when Settings › Show FPS is on.
     var fps: Int = 0
 
+    // Near-miss bonus experiment (written by the engine; stays 0 with the switch off).
+    /// Running close-call streak, 0 when none.
+    var streakLevel = 0
+    /// Points the latest close call paid.
+    var streakAward = 0
+    /// Bumped by each close call (the HUD tag stamps again).
+    var streakSerial = 0
+    /// Highest streak this run.
+    var bestStreak = 0
+
     init(difficulty: Difficulty, skin: PlaneSkin, startRoute: Int,
          timeOfDayMode: TimeOfDayMode, progress: ProgressStore) {
         self.difficulty = difficulty

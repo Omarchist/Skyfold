@@ -20,6 +20,8 @@ struct FlightScore {
     private(set) var starPoints: Int = 0
     /// Stars picked up.
     private(set) var stars: Int = 0
+    /// Whole points from the near-miss bonus experiment (always 0 with the switch off).
+    private(set) var bonusPoints: Int = 0
     /// Points carried in from before this struct existed (resuming a run).
     private let carried: Int
 
@@ -28,7 +30,7 @@ struct FlightScore {
     }
 
     /// The whole-number score to show.
-    var points: Int { carried + starPoints + Int(min(distancePoints + 1e-6, 1e15)) }
+    var points: Int { carried + starPoints + bonusPoints + Int(min(distancePoints + 1e-6, 1e15)) }
 
     mutating func addDistance(_ meters: Double, multiplier: Double) {
         guard meters > 0, multiplier > 0 else { return }
@@ -40,10 +42,15 @@ struct FlightScore {
         starPoints += max(0, points)
     }
 
+    mutating func addBonus(points: Int) {
+        bonusPoints += max(0, points)
+    }
+
     /// Resets everything (a fresh run).
     mutating func reset() {
         distancePoints = 0
         starPoints = 0
         stars = 0
+        bonusPoints = 0
     }
 }
