@@ -5,7 +5,7 @@ import Observation
 nonisolated struct PlayerProgress: Codable, Equatable, Sendable {
     /// City indices (0..<Route.count) ever landed in. Lisbon counts as visited from the start.
     var visitedCities: Set<Int> = [0]
-    var unlockedSkins: Set<SkinID> = [.classic, .kraft, .interceptor]
+    var unlockedSkins: Set<SkinID> = PlayerProgress.startingSkins
     var unlockedDifficulties: Set<DifficultyID> = [.breezy, .standard]
     /// City indices whose airport you can depart from.
     var unlockedAirports: Set<Int> = [0]
@@ -18,6 +18,9 @@ nonisolated struct PlayerProgress: Codable, Equatable, Sendable {
     var totalDistance: Double = 0
     var runsPlayed = 0
     var completedLaps = 0
+
+    /// Skins every player starts with, plus the developer-only ones in Debug builds.
+    static let startingSkins: Set<SkinID> = Set([SkinID.classic, .kraft] + PlaneSkin.developerOnly.map(\.id))
 
     enum CodingKeys: String, CodingKey {
         case visitedCities, unlockedSkins, unlockedDifficulties, unlockedAirports, journal
@@ -54,7 +57,10 @@ extension PlayerProgress {
         let valid = 0..<Route.count
         visitedCities = Set(visitedCities.filter(valid.contains)).union([0])
         unlockedAirports = Set(unlockedAirports.filter(valid.contains)).union([0])
-        unlockedSkins.formUnion([.classic, .kraft, .interceptor])
+        // Keep only skins this build lists (a developer-only skin saved by a Debug build is dropped
+        // in Release), then add the starting ones back.
+        unlockedSkins = unlockedSkins.filter { id in PlaneSkin.all.contains { $0.id == id } }
+        unlockedSkins.formUnion(Self.startingSkins)
         unlockedDifficulties.formUnion([.breezy, .standard])
         bestScore = max(0, bestScore)
         bestDistance = bestDistance.isFinite ? max(0, bestDistance) : 0

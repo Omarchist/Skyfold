@@ -84,6 +84,14 @@ Add them in *Product › Scheme › Edit Scheme › Run › Arguments*, or pass 
 | `-SkyfoldStartAirport 5` | Start a run from route city 0, 3, 5 or 8; needs `-SkyfoldUnlockAll YES` (Debug builds) |
 | `-SkyfoldFlightScript crash` | About 6 s into the first leg: `pause`, `crash`, `shield`, `gameover` or `newbest`; needs `-SkyfoldAutostart YES -SkyfoldAutopilot YES` (Debug builds) |
 | `-SkyfoldExperiments postcards` | Switch experimental features on at launch: a comma list of `postcards`, `nearMissBonus`, `windGusts`, `ghostFlight`, `dailyRoute`, or `all` / `none` |
+| `-SkyfoldSkin interceptor` | Select a skin on launch (Debug builds) |
+| `-SkyfoldShowFPS YES` | Show the frame-rate readout (Debug builds) |
+| `-SkyfoldDayCycleSeconds 20` | Run the day-night cycle this fast, to test the transitions (Debug builds) |
+| `-SkyfoldPlaneDemo stunt` | Repeat a scripted `stunt` or `drag` on the menu plane (Debug builds) |
+
+The Interceptor skin (the fighter jet from `Tools/Blender/jet/`) is for developers only: Debug
+builds list and unlock it, Release builds (TestFlight and the App Store) leave it out. See
+`PlaneSkin.developerOnly` in `Skyfold/Core/Content.swift`.
 
 `Tools/run-sim.sh` and `Tools/screenshots.sh` pass any of these switches to the app. The
 screenshot script saves a timed portrait or landscape series to `Screenshots/` and prints
