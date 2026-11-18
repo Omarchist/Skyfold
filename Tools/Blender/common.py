@@ -32,7 +32,7 @@ MODELS_DIR = os.path.join(PROJECT_ROOT, "Skyfold", "Resources", "Models")
 ROUGHNESS = 0.9          # matte paper
 CARD = 0.02              # default card thickness in meters
 TRI_BUDGET = 400
-BUILDING_TRI_BUDGET = 160
+BUILDING_TRI_BUDGET = 360
 
 # Print palette (ART_DIRECTION.md). Default part colors come from here; the
 # game replaces most of them at runtime.

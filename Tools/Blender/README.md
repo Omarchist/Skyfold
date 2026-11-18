@@ -41,4 +41,4 @@ Blender authors in Z-up. The exporter converts the mesh data to game coordinates
 | `landmark_dome` | 4.00 × 6.00 × 4.00 | `Wall`, `Dome`, `Window` |
 | `gate` | 1.80 × 2.60 × 0.30 | `Frame`, `DoorL`, `DoorR`, `Sign`, `Glow` |
 
-The plane points along +X and the bird faces −X. The bird wing origins sit at the shoulders. The gate faces +Z and each door keeps its pivot at the outer hinge. The triangle cap is 400 per asset and 160 per building variant.
+The plane points along +X and the bird faces −X. The bird wing origins sit at the shoulders. The gate faces +Z and each door keeps its pivot at the outer hinge. The triangle cap is 400 per asset and 360 per building variant.
