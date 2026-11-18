@@ -5,6 +5,10 @@ import SwiftUI
 final class BackdropClock {
     var scroll: Double = 0   // meters flown this run
     var speed: Float = 0     // m/s
+    /// The sky's own smooth nightness (0 day ... 1 night), written every frame by the flight engine.
+    /// Negative = not driven; the backdrop then uses the palette it was given. Because the Canvas
+    /// reads it on its own timeline, the sky stays smooth without any SwiftUI state changing.
+    var nightness: Double = -1
     init() {}
 }
 
@@ -41,10 +45,11 @@ struct SkyBackdrop: View {
     }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: quality == .low ? 1.0 / 30.0 : 1.0 / 60.0, paused: paused)) { timeline in
+        TimelineView(.animation(minimumInterval: quality == .low ? 1.0 / 30.0 : 1.0 / 120.0, paused: paused)) { timeline in
             let time = timeline.date.timeIntervalSinceReferenceDate
+            let skyPalette = clock.nightness >= 0 ? Palette.at(nightness: (clock.nightness * 200).rounded() / 200) : palette
             Canvas(opaque: true) { context, size in
-                painter.draw(into: &context, size: size, time: time, palette: palette, clock: clock,
+                painter.draw(into: &context, size: size, time: time, palette: skyPalette, clock: clock,
                              quality: quality, horizonFraction: horizonFraction, reduceMotion: reduceMotion)
             }
         }

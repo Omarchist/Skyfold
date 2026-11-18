@@ -72,7 +72,7 @@ final class WorldRenderer {
         stars = StarPool(library: library, style: style)
         trail = TrailPool(shapes: shapes, style: style)
         ring = PopRing(shapes: shapes, style: style)
-        plane = PlaneActor(library: library, style: style, shapes: shapes)
+        plane = PlaneActor(library: library, style: style, shapes: shapes, skin: skin)
         ghost = ExperimentStore.shared.isOn(.ghostFlight) ? GhostActor(library: library) : nil
         cities = [CityGroup(slotIndex: 0, library: library, style: style, shapes: shapes),
                   CityGroup(slotIndex: 1, library: library, style: style, shapes: shapes)]
@@ -172,6 +172,7 @@ final class WorldRenderer {
     // MARK: Frame
 
     func render(_ f: RenderFrame, sim: FlightSimulation) {
+        SyncBudget.refill(frameDt: f.cameraDt)
         camera.airportTarget = f.airportCamera ? 1 : 0
         camera.update(dt: f.cameraDt)
         let blend = camera.blend

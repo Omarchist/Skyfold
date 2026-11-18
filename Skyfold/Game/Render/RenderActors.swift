@@ -47,16 +47,20 @@ final class PlaneActor {
     private var outlineParts: StyledParts
     private var shadowPart: StyledPart?
     static let baseScale: Float = 1.25
+    /// Per aircraft, so a jet covers the same screen area as the paper plane.
+    private let footprint: Float
 
-    init(library: ModelLibrary, style: RenderStyle, shapes: RenderShapes) {
+    init(library: ModelLibrary, style: RenderStyle, shapes: RenderShapes, skin: PlaneSkin) {
         root.name = "plane"
-        model = library.make(.plane)
+        let name = skin.aircraft.model
+        footprint = skin.aircraft.footprintScale
+        model = library.make(name)
         model.name = "planeModel"
         root.addChild(model)
-        parts = StyledParts.bind(model, fallback: style.slot(.misc)) { style.resolve(model: .plane, part: $0, city: nil) }
+        parts = StyledParts.bind(model, fallback: style.slot(.misc)) { style.resolve(model: name, part: $0, city: nil) }
         // A printed ink outline: a slightly larger flat dark copy just behind the plane, so the pale
         // dart stays readable against cream sky. Only the side camera shows it.
-        outline = library.make(.plane)
+        outline = library.make(name)
         outline.name = "planeOutline"
         root.addChild(outline)
         let ink = style.slot(.planeInk)
@@ -72,7 +76,7 @@ final class PlaneActor {
         root.position = [0, p.y, 0]
         let q = simd_quatf(angle: p.yaw, axis: axisY) * simd_quatf(angle: p.pitch, axis: axisZ)
             * simd_quatf(angle: p.roll, axis: axisX)
-        let k = Self.baseScale * (1 + 0.55 * side)
+        let k = Self.baseScale * footprint * (1 + 0.55 * side)
         model.transform = Transform(scale: p.scale * k, rotation: q, translation: .zero)
         model.isEnabled = p.visible
         let showOutline = p.visible && side > 0.5

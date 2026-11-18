@@ -217,8 +217,17 @@ nonisolated struct Difficulty: Identifiable, Sendable {
 // MARK: - Plane skins
 
 nonisolated enum SkinID: String, CaseIterable, Codable, Identifiable, Sendable {
-    case classic, kraft, newsprint, saffron, monsoon, sakura, hibiscus, goldLeaf, midnight
+    case classic, kraft, newsprint, saffron, monsoon, sakura, hibiscus, goldLeaf, midnight, interceptor
     var id: String { rawValue }
+}
+
+/// Which model a skin flies.
+nonisolated enum Aircraft: Sendable {
+    case paperPlane, jet
+
+    var model: ModelName { self == .jet ? .jet : .plane }
+    /// Multiplier that makes the model's footprint match the paper plane's (about 0.9 m long).
+    var footprintScale: Float { self == .jet ? 0.8 : 1 }
 }
 
 nonisolated struct PlaneSkin: Identifiable, Sendable {
@@ -231,6 +240,8 @@ nonisolated struct PlaneSkin: Identifiable, Sendable {
     /// Speed-trail color.
     let trail: RGBA
     let unlockHint: String
+    /// The model this skin flies. "Paper" and "Crease" parts take `paper` and `crease`.
+    var aircraft: Aircraft = .paperPlane
 
     static let all: [PlaneSkin] = [
         PlaneSkin(id: .classic, name: "Classic", paper: RGBA(hex: 0xFFFDF8), crease: RGBA(hex: 0xE9DCC8),
@@ -251,6 +262,9 @@ nonisolated struct PlaneSkin: Identifiable, Sendable {
                   trail: RGBA(hex: 0xFFE7A3), unlockHint: "Land in New York."),
         PlaneSkin(id: .midnight, name: "Midnight Ink", paper: RGBA(hex: 0x2B2850), crease: RGBA(hex: 0xE4DCCB),
                   trail: RGBA(hex: 0xE5A03A), unlockHint: "Land back in Lisbon after a full lap."),
+        PlaneSkin(id: .interceptor, name: "Interceptor", paper: RGBA(hex: 0x9AA0A8), crease: RGBA(hex: 0x5E646C),
+                  trail: RGBA(hex: 0xDADDE0), unlockHint: "Standard issue.",
+                  aircraft: .jet),
     ]
 
     static func get(_ id: SkinID) -> PlaneSkin { all.first { $0.id == id } ?? all[0] }

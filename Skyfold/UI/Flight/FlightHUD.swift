@@ -63,7 +63,7 @@ struct FlightHUD: View {
                 }
             }
 
-            if settings.showFPS {
+            if settings.showFPS || DebugFlags.showFPS {
                 FlightFPSLabel(session: session)
                     .padding(.horizontal, 14)
                     .padding(.bottom, 4)
