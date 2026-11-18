@@ -145,14 +145,13 @@ struct MainMenuView: View {
         let skin = PlaneSkin.get(model.settings.selectedSkin)
         return Group {
             if planeLive {
-                PlanePreviewView(skin: skin, nightness: night)
+                PlanePreviewView(skin: skin, nightness: night, interactive: true)
                     .transition(.opacity)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { stage = $0 }
-        .allowsHitTesting(false)
-        .accessibilityElement(children: .ignore)
+        .accessibilityElement(children: .combine)
         .accessibilityLabel("A paper plane, \(skin.name)")
     }
 

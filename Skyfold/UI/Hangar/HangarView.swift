@@ -29,9 +29,8 @@ private struct LibraryHangarStage: View {
         let height: CGFloat = wide ? 260 : 190
         ZStack(alignment: .bottomLeading) {
             sky
-            PlanePreviewView(skin: skin, nightness: nightness)
+            PlanePreviewView(skin: skin, nightness: nightness, interactive: true)
                 .padding(.bottom, 30)
-                .allowsHitTesting(false)
                 .accessibilityHidden(true)
             placard
         }
