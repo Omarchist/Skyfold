@@ -73,7 +73,7 @@ final class WorldRenderer {
         trail = TrailPool(shapes: shapes, style: style)
         ring = PopRing(shapes: shapes, style: style)
         plane = PlaneActor(library: library, style: style, shapes: shapes, skin: skin)
-        ghost = ExperimentStore.shared.isOn(.ghostFlight) ? GhostActor(library: library) : nil
+        ghost = ExperimentStore.shared.isOn(.ghostFlight) ? GhostActor(library: library, aircraft: skin.aircraft) : nil
         cities = [CityGroup(slotIndex: 0, library: library, style: style, shapes: shapes),
                   CityGroup(slotIndex: 1, library: library, style: style, shapes: shapes)]
 

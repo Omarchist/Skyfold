@@ -1,7 +1,7 @@
 import RealityKit
 import simd
 
-/// The ghost plane: the same paper dart, drawn flat and quiet. A pale see-through fill inside a
+/// The ghost plane: the same aircraft as the player's, drawn flat and quiet. A pale see-through fill inside a
 /// thin ink outline, set a little behind the lane plane. No shadow, no trail, no collision. Its
 /// materials are see-through, so they never write depth and can never hide the real plane.
 final class GhostActor {
@@ -13,11 +13,15 @@ final class GhostActor {
     private let fillSlot = MaterialSlot(kind: .unlit, color: RGBA(hex: 0xF4ECDD), opacity: 0.5)
     private let outlineSlot = MaterialSlot(kind: .unlit, color: RGBA(hex: 0x2A211B), opacity: 0.7)
 
-    init(library: ModelLibrary) {
+    /// Matches the player's aircraft (the paper dart or the jet) at its usual footprint.
+    private let footprint: Float
+
+    init(library: ModelLibrary, aircraft: Aircraft = .paperPlane) {
         root.name = "ghost"
-        outline = library.make(.plane)
+        footprint = aircraft.footprintScale
+        outline = library.make(aircraft.model)
         outline.name = "ghostOutline"
-        fill = library.make(.plane)
+        fill = library.make(aircraft.model)
         fill.name = "ghostFill"
         root.addChild(outline)
         root.addChild(fill)
@@ -45,7 +49,7 @@ final class GhostActor {
 
         root.isEnabled = true
         let side = 1 - blend
-        let k = PlaneActor.baseScale * (1 + 0.55 * side)
+        let k = PlaneActor.baseScale * footprint * (1 + 0.55 * side)
         let q = simd_quatf(angle: frame.pitch, axis: [0, 0, 1]) * simd_quatf(angle: side * 0.5, axis: [1, 0, 0])
         root.position = [frame.x, frame.y, -0.6 * side]
         fill.transform = Transform(scale: SIMD3(repeating: k), rotation: q, translation: .zero)
