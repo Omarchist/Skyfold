@@ -63,6 +63,7 @@ final class GameEngine {
     private var nightness: Double
     private var nightTarget: Double
     private var nightPoll: Float = 0
+    private var debugDayClock: Double = 0
     private var appliedNight: Double = -1
 
     // Publishing.
@@ -86,6 +87,7 @@ final class GameEngine {
         lastPhase = session.phase
         nightness = session.nightness
         nightTarget = session.nightness
+        clock.nightness = session.nightness
     }
 
     /// Fog from the Fog Bank curse. Debug builds can force it with the `HarnessFog` launch argument.
@@ -503,20 +505,34 @@ final class GameEngine {
             nightPoll = 0.25
             nightTarget = session.targetNightness()
         }
+        if let secs = DebugFlags.dayCycleSeconds {
+            debugDayClock += Double(dt)
+            nightTarget = TimeOfDay.cycleNightness(debugDayClock / (secs / 2))
+        }
         let step = Double(dt) * 0.3
         nightness += min(max(nightTarget - nightness, -step), step)
-        if abs(nightness - appliedNight) > 0.01 || appliedNight < 0 {
-            appliedNight = nightness
-            if abs(session.nightness - nightness) > 0.0001 { session.nightness = nightness }
-            renderer?.applyPalette(Palette.at(nightness: nightness), nightness: nightness)
+        // The sky reads the smooth value on its own timeline (no SwiftUI state involved).
+        clock.nightness = nightness
+        // Everything else (3D materials, the SwiftUI palette) follows in steps of 1/40: each step
+        // re-colors the scene and re-renders the HUD, so it must not happen every frame. A step is
+        // about 2% of the day to night range, too small to see as stepping.
+        let level = (nightness * Self.nightLevels).rounded() / Self.nightLevels
+        if level != appliedNight || appliedNight < 0 {
+            appliedNight = level
+            if session.nightness != level { session.nightness = level }
+            renderer?.applyPalette(Palette.at(nightness: level), nightness: level)
         }
     }
+
+    private static let nightLevels = 40.0
 
     // MARK: Live values
 
     private func trackFPS(_ rawDt: Float) {
         guard rawDt > 0 else { return }
-        fpsSmoothed += (min(1 / rawDt, 120) - fpsSmoothed) * 0.04
+        // Time-based smoothing (about a 0.4 s time constant), so 60 Hz, 120 Hz and in-between agree.
+        let alpha = 1 - expf(-min(rawDt, 0.5) / 0.4)
+        fpsSmoothed += (min(1 / rawDt, 125) - fpsSmoothed) * alpha
     }
 
     /// Writes the live values into the session, at most 15 times a second and only when they moved.
@@ -525,7 +541,7 @@ final class GameEngine {
         guard publishTimer >= 1.0 / 15.0 else { return }
         publishTimer = 0
         flushValues()
-        if settings.showFPS {
+        if settings.showFPS || DebugFlags.showFPS {
             let v = Int(fpsSmoothed.rounded())
             if session.fps != v { session.fps = v }
         }

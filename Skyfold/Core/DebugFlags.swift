@@ -28,6 +28,26 @@ nonisolated enum DebugFlags {
     static var flightScript: String? { defaults.string(forKey: "SkyfoldFlightScript") }
 
     static var legLengthScale: Double { shortLegs ? 0.15 : 1 }
+
+    /// Show the FPS readout in the flight HUD without touching Settings (DEBUG builds only).
+    static var showFPS: Bool {
+        #if DEBUG
+        defaults.bool(forKey: "SkyfoldShowFPS")
+        #else
+        false
+        #endif
+    }
+
+    /// Seconds one full day (day, dusk, night, dawn) takes in flight, so a screenshot run can catch
+    /// the transitions: `-SkyfoldDayCycleSeconds 20` (DEBUG builds only). nil = normal.
+    static var dayCycleSeconds: Double? {
+        #if DEBUG
+        let v = defaults.double(forKey: "SkyfoldDayCycleSeconds")
+        return v >= 4 ? v : nil
+        #else
+        nil
+        #endif
+    }
 }
 
 extension DebugFlags {
@@ -62,5 +82,13 @@ enum DebugProgressSeed {
             break
         }
     }
+}
+#endif
+
+#if DEBUG
+extension DebugFlags {
+    /// Screenshots only: `-SkyfoldPlaneDemo stunt|drag` plays a tap-stunt or a drag-and-release
+    /// on the interactive menu plane, over and over.
+    static var planeDemo: String? { defaults.string(forKey: "SkyfoldPlaneDemo") }
 }
 #endif

@@ -167,6 +167,7 @@ final class WorldRenderer {
     // MARK: Frame
 
     func render(_ f: RenderFrame, sim: FlightSimulation) {
+        SyncBudget.refill(frameDt: f.cameraDt)
         camera.airportTarget = f.airportCamera ? 1 : 0
         camera.update(dt: f.cameraDt)
         let blend = camera.blend

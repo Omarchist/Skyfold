@@ -32,7 +32,7 @@ struct FlightView: View {
             let landscape = size.width > size.height
             let aspect = Float(size.width / max(size.height, 1))
             ZStack {
-                SkyBackdrop(palette: Palette.at(nightness: session.nightness),
+                SkyBackdrop(palette: Palette.at(nightness: engine.clock.nightness),
                             clock: engine.clock,
                             quality: settings.graphicsQuality,
                             horizonFraction: CGFloat(RigMath.horizonFraction(landscape: landscape, aspect: aspect)),

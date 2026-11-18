@@ -45,11 +45,12 @@ final class MaterialSlot {
         material = Self.build(kind: kind, color: color, opacity: opacity, roughness: roughness)
     }
 
-    /// Rebuilds the material only when the color moved enough to be seen.
+    /// Rebuilds the material only when the color moved enough to be seen (the change adds up, so a slow
+    /// fade still arrives, in steps of about 1% brightness).
     func set(_ c: RGBA, opacity o: Float? = nil) {
         let newOpacity = o ?? opacity
         let d = abs(c.r - color.r) + abs(c.g - color.g) + abs(c.b - color.b)
-        guard d > 0.004 || abs(newOpacity - opacity) > 0.004 else { return }
+        guard d > 0.02 || abs(newOpacity - opacity) > 0.004 else { return }
         color = c
         opacity = newOpacity
         material = Self.build(kind: kind, color: c, opacity: newOpacity, roughness: roughness)
@@ -74,6 +75,14 @@ final class MaterialSlot {
     }
 }
 
+/// How many already-styled parts may take a new material this frame. The renderer refills it at the
+/// start of every frame. Palette steps are small, so a part that waits a frame or two is not seen.
+enum SyncBudget {
+    /// About 1200 parts a second, whatever the frame rate: 20 a frame at 60 Hz, 10 at 120 Hz.
+    static var remaining = 20
+    static func refill(frameDt: Float) { remaining = min(max(Int(frameDt * 1200), 6), 48) }
+}
+
 /// A model part bound to a slot. `sync()` is a single integer compare when nothing changed.
 final class StyledPart {
     let entity: Entity
@@ -90,6 +99,14 @@ final class StyledPart {
 
     func sync() {
         guard applied != slot.version else { return }
+        // A part that already wears an older shade of its slot waits its turn when the frame's
+        // budget is spent, so a palette step reaches the scene over a few frames instead of
+        // re-assigning every visible material in one. A part never styled (applied == 0) is
+        // exempt: it must not show up in the wrong color.
+        if applied != 0 {
+            guard SyncBudget.remaining > 0 else { return }
+            SyncBudget.remaining -= 1
+        }
         applied = slot.version
         guard var mc = entity.components[ModelComponent.self] else { return }
         mc.materials = Array(repeating: slot.material, count: count)
