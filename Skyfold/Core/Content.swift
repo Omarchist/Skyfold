@@ -262,10 +262,20 @@ nonisolated struct PlaneSkin: Identifiable, Sendable {
                   trail: RGBA(hex: 0xFFE7A3), unlockHint: "Land in New York."),
         PlaneSkin(id: .midnight, name: "Midnight Ink", paper: RGBA(hex: 0x2B2850), crease: RGBA(hex: 0xE4DCCB),
                   trail: RGBA(hex: 0xE5A03A), unlockHint: "Land back in Lisbon after a full lap."),
-        PlaneSkin(id: .interceptor, name: "Interceptor", paper: RGBA(hex: 0x9AA0A8), crease: RGBA(hex: 0x5E646C),
-                  trail: RGBA(hex: 0xDADDE0), unlockHint: "Standard issue.",
-                  aircraft: .jet),
-    ]
+    ] + developerOnly
+
+    /// The fighter jet. Defined in every build, but listed only for developers (see `developerOnly`).
+    static let interceptor = PlaneSkin(id: .interceptor, name: "Interceptor", paper: RGBA(hex: 0x9AA0A8),
+                                       crease: RGBA(hex: 0x5E646C), trail: RGBA(hex: 0xDADDE0),
+                                       unlockHint: "Standard issue.", aircraft: .jet)
+
+    /// Skins only developers get: Debug builds (run from Xcode) list and unlock them, Release
+    /// builds (TestFlight and the App Store) leave them out, and a saved choice falls back to Classic.
+    #if DEBUG
+    static let developerOnly: [PlaneSkin] = [interceptor]
+    #else
+    static let developerOnly: [PlaneSkin] = []
+    #endif
 
     static func get(_ id: SkinID) -> PlaneSkin { all.first { $0.id == id } ?? all[0] }
 }
