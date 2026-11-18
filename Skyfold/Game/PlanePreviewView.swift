@@ -1,7 +1,7 @@
 import SwiftUI
 import RealityKit
 
-/// A small, cheap RealityView of the paper plane turning slowly in a skin's colors, on a
+/// A small, cheap RealityView of the skin's aircraft (paper plane or jet) turning slowly in a skin's colors, on a
 /// transparent background. Used in the menu and the hangar.
 ///
 /// With `interactive` on, a drag on the view turns and tilts the plane (it follows the finger
@@ -53,6 +53,9 @@ final class PlanePreviewScene {
     private let light = Entity()
     private var subscriptions: [EventSubscription] = []
     private var lastKey = ""
+    private var model: Entity?
+    private var aircraft: Aircraft = .paperPlane
+    private var swapping = false
 
     var reduceMotion = false
 
@@ -74,10 +77,12 @@ final class PlanePreviewScene {
     /// The ONE place the preview's aircraft model is loaded and bound to its skin colors. A later
     /// change can load a different model here for some skins.
     private func loadAircraft(for skin: PlaneSkin, style: RenderStyle) async -> (model: Entity, parts: StyledParts) {
-        await ModelLibrary.shared.load([.plane])
-        let model = ModelLibrary.shared.make(.plane)
+        let name = skin.aircraft.model
+        await ModelLibrary.shared.load([name])
+        let model = ModelLibrary.shared.make(name)
         model.name = "planePreview"
-        let parts = StyledParts.bind(model, fallback: style.slot(.misc)) { style.resolve(model: .plane, part: $0, city: nil) }
+        model.scale = SIMD3<Float>(repeating: skin.aircraft.footprintScale)
+        let parts = StyledParts.bind(model, fallback: style.slot(.misc)) { style.resolve(model: name, part: $0, city: nil) }
         // A little nose-down so the fold reads from above, wings level.
         model.orientation = simd_quatf(angle: -0.2, axis: [0, 0, 1])
         return (model, parts)
@@ -91,6 +96,8 @@ final class PlanePreviewScene {
         self.style = style
         let aircraft = await loadAircraft(for: skin, style: style)
         parts = aircraft.parts
+        model = aircraft.model
+        self.aircraft = skin.aircraft
         stuntRig.addChild(aircraft.model)
         pivot.addChild(stuntRig)
         tilt.addChild(pivot)
@@ -122,6 +129,7 @@ final class PlanePreviewScene {
 
     func apply(skin: PlaneSkin, nightness: Double) {
         guard let style else { return }
+        swapAircraftIfNeeded(for: skin, style: style)
         let key = "\(skin.id.rawValue)|\(Int(nightness * 50))"
         guard key != lastKey else { return }
         lastKey = key
@@ -134,6 +142,23 @@ final class PlanePreviewScene {
         comp.isRealWorldProxy = false
         light.components.set(comp)
         light.look(at: .zero, from: [-1.4, 3.2, 3.4], relativeTo: nil)
+    }
+
+    /// The Hangar can pick a skin that flies another model: load it, replace the old one, rebind.
+    private func swapAircraftIfNeeded(for skin: PlaneSkin, style: RenderStyle) {
+        guard skin.aircraft != aircraft, !swapping else { return }
+        swapping = true
+        Task { @MainActor in
+            let next = await loadAircraft(for: skin, style: style)
+            model?.removeFromParent()
+            stuntRig.addChild(next.model)
+            model = next.model
+            parts = next.parts
+            aircraft = skin.aircraft
+            swapping = false
+            lastKey = ""
+            apply(skin: skin, nightness: style.nightness)
+        }
     }
 
     // MARK: Touch

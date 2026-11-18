@@ -148,6 +148,8 @@ struct StyledParts {
 enum RenderRole: CaseIterable {
     // plane
     case planePaper, planeCrease, planeInk
+    // jet only: canopy glass, gunmetal, red markings
+    case jetCanopy, jetMetal, jetMarking
     // obstacles
     case birdBody, birdWing, birdBeak
     case balloonA, balloonB, balloonC, balloonString
@@ -255,6 +257,12 @@ final class RenderStyle {
         set(.towerBeacon, p.accent)
         set(.star, lit(0xE5A03A, 0xF2C46A))
 
+        // Jet parts with fixed colors. Unlike the skin colors they get no night lift, so they sink
+        // into the dark with the rest of the scene while the skin parts stay readable.
+        set(.jetCanopy, lit(0x35485A, 0x151C2A))
+        set(.jetMetal, lit(0x464A50, 0x1E222E))
+        set(.jetMarking, lit(0xC2402B, 0x5C2A2C))
+
         set(.planeInk, RGBA(hex: 0x2A211B).mixed(with: RGBA(hex: 0x070A14), night))
 
         let g = p.printGround, gf = p.printGroundFar
@@ -330,6 +338,11 @@ final class RenderStyle {
         switch (model, part) {
         case (.plane, "Paper"): return slot(.planePaper)
         case (.plane, "Crease"): return slot(.planeCrease)
+        case (.jet, "Paper"): return slot(.planePaper)
+        case (.jet, "Crease"): return slot(.planeCrease)
+        case (.jet, "Canopy"): return slot(.jetCanopy)
+        case (.jet, "Metal"): return slot(.jetMetal)
+        case (.jet, "Marking"): return slot(.jetMarking)
         case (.bird, "Body"): return slot(.birdBody)
         case (.bird, "WingL"), (.bird, "WingR"): return slot(.birdWing)
         case (.bird, "Beak"): return slot(.birdBeak)

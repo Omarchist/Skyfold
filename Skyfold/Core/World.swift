@@ -35,6 +35,7 @@ enum World {
 /// Recolorable parts are child entities named exactly as listed in `Tools/Blender/README.md`.
 enum ModelName: String, CaseIterable, Sendable {
     case plane
+    case jet
     case bird
     case balloons
     case kite

@@ -5,7 +5,7 @@ import Observation
 nonisolated struct PlayerProgress: Codable, Equatable, Sendable {
     /// City indices (0..<Route.count) ever landed in. Lisbon counts as visited from the start.
     var visitedCities: Set<Int> = [0]
-    var unlockedSkins: Set<SkinID> = [.classic, .kraft]
+    var unlockedSkins: Set<SkinID> = [.classic, .kraft, .interceptor]
     var unlockedDifficulties: Set<DifficultyID> = [.breezy, .standard]
     /// City indices whose airport you can depart from.
     var unlockedAirports: Set<Int> = [0]
@@ -54,7 +54,7 @@ extension PlayerProgress {
         let valid = 0..<Route.count
         visitedCities = Set(visitedCities.filter(valid.contains)).union([0])
         unlockedAirports = Set(unlockedAirports.filter(valid.contains)).union([0])
-        unlockedSkins.formUnion([.classic, .kraft])
+        unlockedSkins.formUnion([.classic, .kraft, .interceptor])
         unlockedDifficulties.formUnion([.breezy, .standard])
         bestScore = max(0, bestScore)
         bestDistance = bestDistance.isFinite ? max(0, bestDistance) : 0

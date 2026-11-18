@@ -14,6 +14,7 @@ final class ModelLibrary {
 
     static let requiredParts: [ModelName: [String]] = [
         .plane: ["Paper", "Crease"],
+        .jet: ["Paper", "Crease", "Canopy", "Metal", "Marking"],
         .bird: ["Body", "WingL", "WingR", "Beak"],
         .balloons: ["BalloonA", "BalloonB", "BalloonC", "String"],
         .kite: ["Sail", "Spar", "Tail"],
@@ -84,6 +85,21 @@ enum StandIn {
         let root = Entity()
         root.name = name.rawValue
         switch name {
+        case .jet:
+            // Stand-in for the fighter: a slim dart with swept wings and the five part names.
+            root.addChild(part("Paper", builderMesh { b in
+                b.tri([0.56, 0, 0], [-0.5, 0.02, 0.37], [-0.5, 0.02, -0.37])
+                b.tri([0.56, 0, 0], [-0.5, 0.02, -0.37], [-0.5, 0.02, 0.37])
+            }))
+            root.addChild(part("Crease", builderMesh { b in
+                b.tri([0.56, 0, 0], [-0.5, 0.02, 0.0], [-0.5, -0.13, 0.0])
+                b.tri([0.56, 0, 0], [-0.5, -0.13, 0.0], [-0.5, 0.02, 0.0])
+            }))
+            for n in ["Canopy", "Metal", "Marking"] {
+                root.addChild(part(n, builderMesh { b in
+                    b.tri([0, 0.13, 0], [-0.01, 0.13, 0.01], [-0.01, 0.13, -0.01])
+                }))
+            }
         case .plane:
             root.addChild(part("Paper", builderMesh { b in
                 // Top fold: a dart seen from above, nose +X, wings along Z.

@@ -92,3 +92,10 @@ extension DebugFlags {
     static var planeDemo: String? { defaults.string(forKey: "SkyfoldPlaneDemo") }
 }
 #endif
+
+#if DEBUG
+extension DebugFlags {
+    /// Screenshots only: `-SkyfoldSkin interceptor` selects that skin on launch.
+    static var skin: SkinID? { defaults.string(forKey: "SkyfoldSkin").flatMap(SkinID.init(rawValue:)) }
+}
+#endif

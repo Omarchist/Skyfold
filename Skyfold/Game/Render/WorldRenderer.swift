@@ -69,7 +69,7 @@ final class WorldRenderer {
         stars = StarPool(library: library, style: style)
         trail = TrailPool(shapes: shapes, style: style)
         ring = PopRing(shapes: shapes, style: style)
-        plane = PlaneActor(library: library, style: style, shapes: shapes)
+        plane = PlaneActor(library: library, style: style, shapes: shapes, skin: skin)
         cities = [CityGroup(slotIndex: 0, library: library, style: style, shapes: shapes),
                   CityGroup(slotIndex: 1, library: library, style: style, shapes: shapes)]
 
