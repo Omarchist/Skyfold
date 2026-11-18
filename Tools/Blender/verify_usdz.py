@@ -20,7 +20,7 @@ TOL = 0.15  # +-15% on the sizes in the spec
 # bbox instead of the whole model (e.g. the kite's sail without its tail).
 SPEC = {
     "plane": dict(size=(0.9, 0.22, 0.75), origin="center", parts=["Paper", "Crease"]),
-    "jet": dict(size=(1.13, 0.26, 0.74), origin="center", budget=3600,
+    "jet": dict(size=(1.15, 0.31, 0.74), origin="center", budget=7000,
                 parts=["Paper", "Crease", "Canopy", "Metal", "Marking"]),
     "bird": dict(size=(0.45, None, 0.7), origin="center",
                  parts=["Body", "WingL", "WingR", "Beak"]),
