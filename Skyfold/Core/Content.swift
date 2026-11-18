@@ -264,8 +264,10 @@ nonisolated struct PlaneSkin: Identifiable, Sendable {
                   trail: RGBA(hex: 0xE5A03A), unlockHint: "Land back in Lisbon after a full lap."),
     ] + developerOnly
 
-    /// The fighter jet. Defined in every build, but listed only for developers (see `developerOnly`).
-    static let interceptor = PlaneSkin(id: .interceptor, name: "Interceptor", paper: RGBA(hex: 0x9AA0A8),
+    /// The F-15 fighter jet (Tools/Blender/jet). Defined in every build, but listed only for
+    /// developers (see `developerOnly`). Boeing licenses the F-15 name and likeness for games, so
+    /// rename it or license it before this skin ever ships in a Release build.
+    static let interceptor = PlaneSkin(id: .interceptor, name: "F-15", paper: RGBA(hex: 0x9AA0A8),
                                        crease: RGBA(hex: 0x5E646C), trail: RGBA(hex: 0xDADDE0),
                                        unlockHint: "Standard issue.", aircraft: .jet)
 

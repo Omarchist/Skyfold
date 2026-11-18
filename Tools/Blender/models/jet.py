@@ -42,4 +42,4 @@ for part, builder in parts.items():
     builder.to_object(part, C.flat_material(f"{part}Mat", COLORS[part]))
 
 C.recenter("center")
-C.export_usdz("jet", max_tris=3600)  # the other models stay under 400; the jet has its own budget
+C.export_usdz("jet", max_tris=7000)  # the other models stay under 400; the jet has its own budget

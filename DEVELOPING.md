@@ -89,7 +89,7 @@ Add them in *Product › Scheme › Edit Scheme › Run › Arguments*, or pass 
 | `-SkyfoldDayCycleSeconds 20` | Run the day-night cycle this fast, to test the transitions (Debug builds) |
 | `-SkyfoldPlaneDemo stunt` | Repeat a scripted `stunt` or `drag` on the menu plane (Debug builds) |
 
-The Interceptor skin (the fighter jet from `Tools/Blender/jet/`) is for developers only: Debug
+The F-15 skin (id `interceptor`, the fighter jet from `Tools/Blender/jet/`) is for developers only: Debug
 builds list and unlock it, Release builds (TestFlight and the App Store) leave it out. See
 `PlaneSkin.developerOnly` in `Skyfold/Core/Content.swift`.
 

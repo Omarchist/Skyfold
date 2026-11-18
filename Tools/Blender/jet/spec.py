@@ -92,5 +92,5 @@ STORES = dict(
 # "Marking"- roundels, stripes, the few printed details
 PARTS = ["Paper", "Crease", "Canopy", "Metal", "Marking"]
 
-# Triangle budgets (the whole jet must stay under 3600)
-BUDGET = dict(fuselage=1200, wings=900, engines=1300)
+# Triangle budgets (the whole jet must stay under 7000)
+BUDGET = dict(fuselage=2400, wings=1600, engines=2800)  # detail pass: under 7000 in all
