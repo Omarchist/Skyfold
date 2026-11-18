@@ -48,7 +48,7 @@ struct FlightHUD: View {
             .padding(.top, 6)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-            if settings.showFPS {
+            if settings.showFPS || DebugFlags.showFPS {
                 FlightFPSLabel(session: session)
                     .padding(.horizontal, 14)
                     .padding(.bottom, 4)
@@ -56,6 +56,7 @@ struct FlightHUD: View {
                     .allowsHitTesting(false)
             }
         }
+        .limitedTypeSize()
     }
 }
 

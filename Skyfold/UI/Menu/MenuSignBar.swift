@@ -13,8 +13,11 @@ struct MenuSignItem: Identifiable {
 struct MenuSignBar: View {
     let items: [MenuSignItem]
     @Environment(\.palette) private var palette
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
+        // Above the default size the labels get less tracking and padding so "Departures" fits.
+        let large = typeSize > .large
         let text = palette.boardText
         HStack(spacing: 0) {
             ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
@@ -25,16 +28,16 @@ struct MenuSignBar: View {
                 Button(action: item.action) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(item.title)
-                            .signage(10.5, weight: .bold)
+                            .signage(10.5, weight: .bold, tracking: large ? 0.8 : 1.5)
                             .foregroundStyle(text.color)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.75)
+                            .minimumScaleFactor(0.5)
                         Text(item.detail)
                             .font(.ticket(10, weight: .medium))
                             .foregroundStyle(palette.boardAccent.color)
                             .lineLimit(1)
                     }
-                    .padding(.horizontal, 11)
+                    .padding(.horizontal, large ? 6 : 9)
                     .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
                 }
                 .buttonStyle(MenuSignStyle())
@@ -42,6 +45,7 @@ struct MenuSignBar: View {
                 .accessibilityValue(item.detail)
             }
         }
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
         .background {
             ZStack(alignment: .top) {
                 palette.boardBackground.color

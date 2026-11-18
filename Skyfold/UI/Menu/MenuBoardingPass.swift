@@ -28,11 +28,19 @@ struct MenuBoardingPass: View {
         TicketPanel(cornerRadius: 5, notchRadius: 8) {
             VStack(alignment: .leading, spacing: 0) {
                 // Header band in airmail blue.
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Skyfold Air").signage(10, weight: .heavy)
-                    Text("Boarding pass").signage(10, weight: .regular).opacity(0.8)
-                    Spacer(minLength: 8)
-                    Text(flight).font(.ticket(11, weight: .bold)).tracking(1)
+                // Drops the second label when the first and the flight number need the room.
+                ViewThatFits(in: .horizontal) {
+                    ForEach([true, false], id: \.self) { full in
+                        HStack(alignment: .firstTextBaseline) {
+                            Text("Skyfold Air").signage(10, weight: .heavy).lineLimit(1)
+                            if full {
+                                Text("Boarding pass").signage(10, weight: .regular).opacity(0.8).lineLimit(1)
+                            }
+                            Spacer(minLength: 8)
+                            Text(flight).font(.ticket(11, weight: .bold)).tracking(1).lineLimit(1)
+                        }
+                        .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 .foregroundStyle(onBlue)
                 .padding(.horizontal, 14)
@@ -98,6 +106,7 @@ struct MenuBoardingPass: View {
             .padding(.top, 12)
             .padding(.bottom, 12)
         }
+        .limitedTypeSize()
         .accessibilityElement(children: .contain)
     }
 
@@ -111,6 +120,8 @@ struct MenuBoardingPass: View {
             Text(city.code)
                 .font(.ticket(compact ? 32 : 40, weight: .bold))
                 .foregroundStyle(palette.ink.color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
             Text(city.name)
                 .font(.display(14, weight: .regular).italic())
                 .foregroundStyle(palette.inkSoft.color)

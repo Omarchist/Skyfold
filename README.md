@@ -1,126 +1,70 @@
 # Skyfold
 
-You're a paper airplane. Dodge obstacles across three altitude lanes, fly city to city
-around the world, and at every airport pick one of two mystery gates: one blesses the rest
-of your run, the other curses it.
+You are a paper airplane. Fly from city to city around the world, dodge what the sky throws at
+you, and at every airport pick one of two mystery gates: one blesses the rest of your run, the
+other curses it.
 
-- **iPhone**, portrait and landscape · iOS 18+ · SwiftUI + RealityKit
-- **3D world, 2D rules**: gameplay is plain 2D math (forward distance × altitude lane);
-  RealityKit just draws that state with low-poly models each frame.
-- macOS is planned: Core and Game avoid UIKit except behind `#if os(iOS)`.
-- Look and feel: airmail and travel paper, a pop-up-book world. See
-  [ART_DIRECTION.md](ART_DIRECTION.md) before adding any screen or model.
+An iPhone game in SwiftUI and RealityKit, for portrait and landscape.
 
-## Open & run
+<p align="center">
+  <img src="docs/screenshots/menu.jpg" width="23%" alt="Main menu with the boarding pass">
+  <img src="docs/screenshots/flight.jpg" width="23%" alt="Final approach to Marrakesh by day">
+  <img src="docs/screenshots/arrival.jpg" width="23%" alt="Landing in a new city">
+  <img src="docs/screenshots/game-over.jpg" width="23%" alt="The game-over ticket">
+</p>
+<p align="center">
+  <img src="docs/screenshots/dusk.jpg" width="94%" alt="Landing in Marrakesh at dusk, side view">
+</p>
 
-1. Open `Skyfold.xcodeproj` in Xcode 27 or later.
+## How it plays
+
+- **Three altitude lanes.** Swipe up or down, or tap the top or bottom of the screen, to climb or
+  dive. Stars mark the safe line through the traffic.
+- **Ten cities.** Each leg ends with a landing in the next one: Lisbon, Marrakesh, Cairo, Istanbul,
+  Mumbai, Kyoto, Sydney, Honolulu, Rio de Janeiro and New York.
+- **Two gates at every airport.** One hides a blessing, such as Tailwind, Paper Shield or
+  Shortcut. The other hides a curse, such as Headwind, Fog Bank or Soggy Paper. Whatever you pick
+  stays with you until the run ends. There are 8 blessings and 9 curses to log.
+- **Things to unlock.** First landings open plane skins, harder difficulties (Breezy to Paper Cut)
+  and new departure airports. The flight log keeps your records and every gate you have opened.
+- **Day and night.** Flights run through dusk into night, follow your clock, or stay on one.
+- **Two views.** Portrait flies behind the plane; landscape watches it from the side.
+
+## The look
+
+Skyfold is drawn as airmail and travel paper: cream card stock, red and blue airmail stripes,
+boarding passes, passport stamps and a split-flap departures board. The 3D world is a pop-up book
+of folded and cut paper. [ART_DIRECTION.md](ART_DIRECTION.md) has the details.
+
+<p align="center">
+  <img src="docs/screenshots/hangar.jpg" width="23%" alt="The hangar with luggage-tag skins">
+  <img src="docs/screenshots/gates.jpg" width="71%" alt="Gate B opened on a curse at night">
+</p>
+
+## How it is made
+
+- **3D world, 2D rules.** The game is plain 2D math: distance flown and altitude lane. RealityKit
+  only draws that state with low-poly paper models, and SwiftUI draws every screen.
+- **No audio files.** The music and sound effects are synthesized in code when the game starts.
+- **Models from scripts.** Each 3D model is a Blender Python script in `Tools/Blender`, so the
+  whole set can be tweaked and rebuilt in seconds.
+
+## Run it
+
+You need Xcode 27 or later; the game runs on iOS 18 or later.
+
+1. Clone this repository and open `Skyfold.xcodeproj`.
 2. Pick an iPhone simulator and press Run.
-3. To run on your own iPhone, choose your team under *Signing & Capabilities* and change the
-   bundle identifier (`com.henry.skyfold`) if needed.
+3. To play on your own iPhone, choose your team under *Signing & Capabilities* and change the
+   bundle identifier if needed.
 
-## Develop on Linux
+## Status
 
-Use Swift 6.2 or later and run the following commands from the repo root.
-[Install Swift on Linux](https://www.swift.org/install/linux/)
+Skyfold is in development. The `experimental` branch has features on trial, each with its own
+switch in Settings: postcards from every city, a near-miss bonus, wind gusts, a ghost of your best
+run and a daily route.
 
-```bash
-swift build
-swift test
-find Skyfold -name '*.swift' -exec swiftc -frontend -parse -swift-version 5 {} +
-```
+## Working on Skyfold
 
-The Swift package compiles the same core models, flight rules, and audio synthesis that
-ship in the app. The test flies a seeded leg with the autopilot. The last command checks
-Swift syntax across the app. Xcode is required to typecheck SwiftUI, RealityKit and other
-iOS APIs and to produce the iPhone app.
-
-### Run the Xcode build from Linux
-
-On the Mac, open Xcode 27 or later once and install its iOS platform support. Select that
-Xcode under *Xcode → Settings → Locations → Command Line Tools*. Enable Remote Login
-for your macOS user. On Linux, use the address shown in Sharing.
-[Set up Remote Login](https://support.apple.com/guide/mac-help/allow-a-remote-computer-to-access-your-mac-mchlp1066/mac)
-
-```bash
-ssh-copy-id user@mac-host
-git config --local skyfold.mac user@mac-host
-Tools/build-ios.sh
-```
-
-The script uses SSH, rsync and flock on Linux. It sends your current app sources and Xcode
-project, including uncommitted edits and new files. Use the same SSH destination across
-agents so their builds queue on Linux. Each checkout keeps an incremental build cache
-under `~/.cache/skyfold-builds/` on the Mac. Pass a different address or SSH alias as
-an argument, or set `SKYFOLD_MAC`, to override the local Git setting.
-
-The command prints the path to the unsigned simulator app on the Mac. Boot an iPhone in
-Simulator, then run the following commands on the Mac using the printed path.
-
-```bash
-xcrun simctl install booted "/path/to/Skyfold.app"
-xcrun simctl launch booted com.henry.skyfold
-```
-
-Run `Tools/build-ios.sh` with no arguments to do the same headless build from a Mac
-checkout. For a physical iPhone, use the signing and run steps above.
-
-### Debug launch arguments
-
-Add them in *Product › Scheme › Edit Scheme › Run › Arguments*, or pass them to `simctl launch`:
-
-| Argument | Effect |
-|---|---|
-| `-SkyfoldAutopilot YES` | The plane flies itself (always picks a safe lane) |
-| `-SkyfoldShortLegs YES` | Legs are ~15% length, so you reach airports fast |
-| `-SkyfoldAutostart YES` | Skip the menu and start a run |
-| `-SkyfoldUnlockAll YES` | Unlock every skin, difficulty and airport (Debug builds) |
-| `-SkyfoldAutoGates YES` | Airports advance on their own: arrival, open a gate, board |
-| `-SkyfoldTimeOfDay day` | Force the time-of-day setting: `cycle`, `clock`, `day` or `night` |
-| `-SkyfoldScreen journal` | Open a menu screen on launch: `journal`, `hangar`, `atlas`, `settings` |
-
-`Tools/screenshots.sh` builds the app, launches it in the Simulator with any of these
-switches, and saves a timed series of screenshots (portrait or landscape) to `Screenshots/`.
-
-## Project layout
-
-```
-Skyfold/
-  App/          @main app entry; installs audio/haptics services
-  Core/         Shared models and rules data, no rendering
-    World.swift        lane metrics + coordinate contract (+X forward, +Y altitude)
-    RunSession.swift   the run state machine shared by engine, renderer and UI
-    Content.swift      cities/route, difficulties, plane skins, leg planning
-    Modifiers.swift    curses & blessings, RunTuning, gate offers
-    Theme.swift        day → dusk → night palettes (warm day, eerie night)
-    Settings.swift     persisted settings + loadout
-    Progress.swift     unlocks, journal, stats (persisted)
-    Services.swift     sound/haptics protocols (silent defaults)
-  Game/         2D rules (spawner, collisions, autopilot) + RealityKit renderer
-  UI/           SwiftUI: menu, HUD, airport gates, journal, settings, hangar, atlas
-  Audio/        Procedural synth (no audio files) + haptics
-  Resources/Models/  low-poly .usdz generated by Tools/Blender
-Tools/
-  Blender/      bpy scripts that generate every model (+ previews, app icon)
-  typecheck.sh  typecheck Core + one module with the target's exact Swift flags
-```
-
-The Xcode project uses folder-synchronized groups, so new files in `Skyfold/` join the
-app target automatically.
-
-## Regenerating the 3D models
-
-```bash
-Tools/Blender/build_all.sh
-```
-
-Requires Blender 5.2+ at `/Applications/Blender.app`. Each model is a script in
-`Tools/Blender/models/`; tweak and rerun. See `Tools/Blender/README.md` for the part names
-the game recolors at runtime.
-
-## How a run flows
-
-`countdown → flying → landing → airport (arrival card → choose gate → board) → countdown …`
-A hit with no shield either offers a revive (Second Wind) or ends the run. Landing in a
-city for the first time unlocks things: skins (Marrakesh, Cairo, Mumbai, Kyoto, Honolulu,
-New York, full lap), difficulties (Cairo → Gale, Sydney → Tempest, New York → Paper Cut),
-and departure airports (Istanbul, Kyoto, Rio).
+[DEVELOPING.md](DEVELOPING.md) covers the project layout, building and testing on Linux with the
+Mac only for Xcode, the debug launch arguments, and how to rebuild the models.

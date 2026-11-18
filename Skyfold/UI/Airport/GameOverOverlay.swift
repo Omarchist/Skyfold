@@ -20,6 +20,7 @@ private struct GameOverStub: View {
     @Environment(AppModel.self) private var model
     @Environment(\.palette) private var palette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     @State private var scrimIn = false
     @State private var shown = false
@@ -33,7 +34,7 @@ private struct GameOverStub: View {
             ViewThatFits(in: .vertical) {
                 layout(metrics)
                 ScrollView(showsIndicators: false) { layout(metrics) }
-                    .defaultScrollAnchor(.center)
+                    .defaultScrollAnchor(.top)
             }
             .padding(metrics.edgeInsets)
             .frame(width: metrics.size.width, height: metrics.size.height, alignment: .center)
@@ -125,8 +126,7 @@ private struct GameOverStub: View {
                 .font(.ticket(11, weight: .medium))
                 .tracking(1)
                 .foregroundStyle(palette.inkSoft.color)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -140,6 +140,7 @@ private struct GameOverStub: View {
                 .foregroundStyle(palette.ink.color)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
+                .limitedTypeSize()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .overlay(alignment: .bottomTrailing) {
                     // Stamped beside the number, so it reads as an overprint rather than a label.
@@ -161,7 +162,8 @@ private struct GameOverStub: View {
     }
 
     private var fields: some View {
-        HStack(alignment: .top, spacing: 0) {
+        // Three columns while each fits its share of the row, one under another when it does not.
+        FitStack(spacing: 8, rowSpacing: 10, equalColumns: true) {
             field("Distance", UIFormat.distance(result.distance))
             field("Cities", "\(result.citiesReached)")
             field("Stars", UIFormat.number(result.stars))
@@ -173,13 +175,13 @@ private struct GameOverStub: View {
             Text(label)
                 .signage(10)
                 .foregroundStyle(palette.inkSoft.color)
+                .lineLimit(1)
             Text(value)
                 .font(.ticket(22, weight: .semibold))
                 .foregroundStyle(palette.ink.color)
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .fixedSize(horizontal: true, vertical: false)
     }
 
     private func modifierList(_ title: String, kind: ModifierKind) -> some View {
@@ -231,7 +233,8 @@ private struct GameOverStub: View {
 
     private func portrait(_ metrics: AirportMetrics) -> some View {
         let width = min(metrics.contentWidth, 380)
-        let tearZone: CGFloat = 89
+        let stackButtons = typeSize >= .xxxLarge
+        let tearZone: CGFloat = stackButtons ? (typeSize.isAccessibilitySize ? 190 : 150) : 89
         let shape = TornStubShape(seed: "over-\(result.score)", tooth: 9, depth: 6,
                                   notchFromBottom: tearZone + 1, notchRadius: 8)
         return VStack(alignment: .leading, spacing: 0) {
@@ -253,10 +256,17 @@ private struct GameOverStub: View {
             Perforation()
                 .padding(.horizontal, 14)
             VStack(spacing: 10) {
-                HStack(spacing: 12) {
-                    AirportButton(title: "Fly again", trailing: "→", action: flyAgain)
-                    AirportButton(title: "Menu", kind: .secondary, action: toMenu)
-                        .fixedSize(horizontal: true, vertical: false)
+                if stackButtons {
+                    VStack(spacing: 10) {
+                        AirportButton(title: "Fly again", trailing: "→", action: flyAgain)
+                        AirportButton(title: "Menu", kind: .secondary, action: toMenu)
+                    }
+                } else {
+                    HStack(spacing: 12) {
+                        AirportButton(title: "Fly again", trailing: "→", action: flyAgain)
+                        AirportButton(title: "Menu", kind: .secondary, action: toMenu)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
                 }
             }
             .padding(.horizontal, 22)

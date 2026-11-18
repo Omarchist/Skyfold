@@ -43,8 +43,8 @@ trim.cone(0.28, 0.0, 0.34, segments=6, center=(0, 0, crown + 0.51))
 trim.rod((0, 0, crown + 0.66), (0, 0, crown + 0.92), 0.02, segments=3)
 
 wall.to_object("Wall", C.flat_material("WallMat", C.INK["wall"]), recalc=False)
-window.to_object("Window", C.flat_material("WindowMat", C.INK["ink"]), recalc=False)
-trim.to_object("Dome", C.flat_material("DomeMat", C.INK["roof"]))
+window.to_object("Window", C.flat_material("WindowMat", C.INK["amber"]), recalc=False)
+trim.to_object("Dome", C.flat_material("DomeMat", C.INK["ochre"]))
 
 C.recenter("bottom")
 C.export_usdz("landmark_dome")

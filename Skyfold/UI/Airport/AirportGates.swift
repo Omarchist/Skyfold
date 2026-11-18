@@ -116,6 +116,7 @@ struct AirportGateLayer: View {
             Text("Pick a gate.")
                 .font(.display(metrics.isLandscape ? 22 : 25, weight: .bold))
                 .foregroundStyle(palette.ink.color)
+                .accessibilityAddTraits(.isHeader)
             Text("One is a blessing, one is a curse.")
                 .font(.skyfold(metrics.isLandscape ? 14 : 15, weight: .medium))
                 .foregroundStyle(palette.inkSoft.color)
@@ -162,7 +163,7 @@ struct AirportGateLayer: View {
             slip
             controls
         }
-        .frame(width: min(316, metrics.contentWidth))
+        .frame(width: min(316, max(220, metrics.size.width / 2 - geometry.signSize.width - 18)))
         .padding(.top, metrics.top)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
@@ -275,7 +276,7 @@ struct AirportHangingSign: View {
             }
             Spacer(minLength: 0)
             Text(letter)
-                .font(.ticket(size.height * 0.58, weight: .heavy))
+                .font(.system(size: size.height * 0.58, weight: .heavy, design: .monospaced))
                 .foregroundStyle(state == .open ? text : hot)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)

@@ -1,9 +1,8 @@
 """Verify every Skyfold .usdz against the model contract.
 
-Run with Blender's bundled Python (it ships pxr):
-    /Applications/Blender.app/Contents/Resources/5.2/python/bin/python3.13 -I \
-        Tools/Blender/verify_usdz.py [models_dir] [--allow-missing]
-or inside Blender:  Blender --background --python Tools/Blender/verify_usdz.py -- [models_dir]
+Run it inside Blender, which ships pxr:
+    blender --background --factory-startup --python-exit-code 1 \
+        --python Tools/Blender/verify_usdz.py -- [models_dir] [--allow-missing]
 
 Prints one table row per model and exits 1 if any rule is broken.
 """
@@ -21,6 +20,8 @@ TOL = 0.15  # +-15% on the sizes in the spec
 # bbox instead of the whole model (e.g. the kite's sail without its tail).
 SPEC = {
     "plane": dict(size=(0.9, 0.22, 0.75), origin="center", parts=["Paper", "Crease"]),
+    "jet": dict(size=(1.15, 0.31, 0.74), origin="center", budget=7000,
+                parts=["Paper", "Crease", "Canopy", "Metal", "Marking"]),
     "bird": dict(size=(0.45, None, 0.7), origin="center",
                  parts=["Body", "WingL", "WingR", "Beak"]),
     "balloons": dict(size=(0.9, 1.2, None), origin="center",
@@ -124,6 +125,11 @@ def check_model(path):
                 errors.append(f"{prim.GetName()}: no material bound")
         if prim.IsA(UsdShade.Shader):
             shader_id = UsdShade.Shader(prim).GetIdAttr().Get() or ""
+            for inp, want in (("roughness", 0.9), ("metallic", 0.0)):
+                attr = prim.GetAttribute(f"inputs:{inp}")
+                if attr and attr.HasAuthoredValue() and not attr.GetConnections() \
+                        and abs(float(attr.Get()) - want) > 0.05:
+                    errors.append(f"{prim.GetPath()}: {inp} = {attr.Get()}, expected {want} (matte paper)")
             if "Texture" in shader_id or "PrimvarReader" in shader_id:
                 errors.append(f"{prim.GetPath()}: textures are not allowed ({shader_id})")
 

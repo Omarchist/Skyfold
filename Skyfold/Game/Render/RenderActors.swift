@@ -42,33 +42,55 @@ final class PlaneActor {
     let root = Entity()
     let model: Entity
     private let shadow: Entity
+    private let outline: Entity
     private var parts: StyledParts
+    private var outlineParts: StyledParts
     private var shadowPart: StyledPart?
     static let baseScale: Float = 1.25
+    /// Per aircraft, so a jet covers the same screen area as the paper plane.
+    private let footprint: Float
 
-    init(library: ModelLibrary, style: RenderStyle, shapes: RenderShapes) {
+    init(library: ModelLibrary, style: RenderStyle, shapes: RenderShapes, skin: PlaneSkin) {
         root.name = "plane"
-        model = library.make(.plane)
+        let name = skin.aircraft.model
+        footprint = skin.aircraft.footprintScale
+        model = library.make(name)
         model.name = "planeModel"
         root.addChild(model)
-        parts = StyledParts.bind(model, fallback: style.slot(.misc)) { style.resolve(model: .plane, part: $0, city: nil) }
+        parts = StyledParts.bind(model, fallback: style.slot(.misc)) { style.resolve(model: name, part: $0, city: nil) }
+        // A printed ink outline: a slightly larger flat dark copy just behind the plane, so the pale
+        // dart stays readable against cream sky. Only the side camera shows it.
+        outline = library.make(name)
+        outline.name = "planeOutline"
+        root.addChild(outline)
+        let ink = style.slot(.planeInk)
+        outlineParts = StyledParts.bind(outline, fallback: ink) { _ in ink }
+        outline.isEnabled = false
         shadow = shapes.shadowEntity(slot: style.slot(.shadow))
         shadowPart = StyledPart(entity: shadow, slot: style.slot(.shadow))
         root.addChild(shadow)
     }
 
-    func apply(_ p: PlanePose, shadowsOn: Bool) {
+    /// `side`: 1 for the side camera (bigger plane, outlined), 0 for the chase camera.
+    func apply(_ p: PlanePose, shadowsOn: Bool, side: Float = 0) {
         root.position = [0, p.y, 0]
         let q = simd_quatf(angle: p.yaw, axis: axisY) * simd_quatf(angle: p.pitch, axis: axisZ)
             * simd_quatf(angle: p.roll, axis: axisX)
-        model.transform = Transform(scale: p.scale * Self.baseScale, rotation: q, translation: .zero)
+        let k = Self.baseScale * footprint * (1 + 0.55 * side)
+        model.transform = Transform(scale: p.scale * k, rotation: q, translation: .zero)
         model.isEnabled = p.visible
+        let showOutline = p.visible && side > 0.5
+        outline.isEnabled = showOutline
+        if showOutline {
+            outline.transform = Transform(scale: p.scale * k * 1.16, rotation: q, translation: [-0.02, 0, -0.07])
+            outlineParts.sync()
+        }
         let show = shadowsOn && p.shadow > 0.02
         shadow.isEnabled = show
         if show {
             let h = max(p.y - World.groundY, 0)
             let s = (1 - min(h * 0.045, 0.3)) * p.shadow
-            shadow.transform = Transform(scale: [0.62 * s, 1, 1.05 * s], rotation: .init(angle: 0, axis: axisY),
+            shadow.transform = Transform(scale: [0.45 * s, 1, 0.78 * s], rotation: .init(angle: 0, axis: axisY),
                                          translation: [0.35, World.groundY + Layer.shadow - p.y, 0])
         }
         parts.sync()
@@ -129,8 +151,14 @@ final class ObstacleActor {
     var isFlat: Bool { kind == .kite || kind == .stormCloud || kind == .thunderhead }
 }
 
-/// Fixed pools of obstacle visuals, one set per kind. Nothing is created after init.
+/// Pools of obstacle visuals, one set per kind, sized so that nothing is created in normal flight.
+/// The rules simulation never put more than 6 obstacles of one kind (12 in all) in the world at once,
+/// at any difficulty with Storm Front twice and Restless Flock three times, but it can hold 48. So a
+/// kind that runs dry grows by one visual instead of leaving a solid obstacle invisible.
 final class ObstaclePool {
+    private let library: ModelLibrary
+    private let style: RenderStyle
+    private let shapes: RenderShapes
     private var all: [ObstacleActor] = []
     private var free: [[ObstacleActor]] = Array(repeating: [], count: ObstacleKind.allCases.count)
     private var bound: [ObstacleActor?] = Array(repeating: nil, count: FlightSimulation.obstacleCapacity)
@@ -148,15 +176,21 @@ final class ObstaclePool {
     }
 
     init(library: ModelLibrary, style: RenderStyle, shapes: RenderShapes) {
+        self.library = library
+        self.style = style
+        self.shapes = shapes
         root.name = "obstacles"
         for kind in ObstacleKind.allCases {
-            for _ in 0..<Self.count(for: kind) {
-                let a = ObstacleActor(kind: kind, library: library, style: style, shapes: shapes)
-                root.addChild(a.holder)
-                all.append(a)
-                free[kind.rawValue].append(a)
-            }
+            for _ in 0..<Self.count(for: kind) { addVisual(kind) }
         }
+    }
+
+    private func addVisual(_ kind: ObstacleKind) {
+        let a = ObstacleActor(kind: kind, library: library, style: style, shapes: shapes)
+        a.holder.isEnabled = false
+        root.addChild(a.holder)
+        all.append(a)
+        free[kind.rawValue].append(a)
     }
 
     func releaseAll() {
@@ -172,6 +206,7 @@ final class ObstaclePool {
     }
 
     private func acquire(_ kind: ObstacleKind, id: UInt32) -> ObstacleActor? {
+        if free[kind.rawValue].isEmpty { addVisual(kind) } // never leave a solid obstacle unseen
         guard let a = free[kind.rawValue].popLast() else { return nil }
         a.boundID = id
         a.yawJitter = (FlightMath.hash01(id, 11) - 0.5) * 0.26
@@ -238,7 +273,7 @@ final class ObstaclePool {
                 let r: Float = o.kind == .thunderhead ? 0.95 : (o.kind == .stormCloud ? 0.7 : 0.45)
                 let k = (1 - min(h * 0.04, 0.3)) * grow / s
                 // Counter the holder's rotation and scale so the shadow stays flat on the ground.
-                sh.transform = Transform(scale: [r * k, 1, r * 1.5 * k], rotation: q.inverse,
+                sh.transform = Transform(scale: [r * 0.75 * k, 1, r * 1.1 * k], rotation: q.inverse,
                                          translation: q.inverse.act([0.4, World.groundY + Layer.shadow - y, 0] / s))
             }
         }

@@ -106,7 +106,9 @@ final class AudioEngine: SoundService {
 
     func play(_ effect: SoundEffect) {
         start()
-        guard let variants = effectBuffers[effect], !variants.isEmpty, ensureRunning() else { return }
+        // Muted effects skip the player entirely (also saves the work of mixing silence).
+        guard effectsVolume > 0,
+              let variants = effectBuffers[effect], !variants.isEmpty, ensureRunning() else { return }
         let cursor = variantCursor[effect, default: 0]
         variantCursor[effect] = cursor &+ 1
         let buffer = variants[cursor % variants.count]

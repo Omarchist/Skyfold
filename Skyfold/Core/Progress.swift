@@ -5,7 +5,7 @@ import Observation
 nonisolated struct PlayerProgress: Codable, Equatable, Sendable {
     /// City indices (0..<Route.count) ever landed in. Lisbon counts as visited from the start.
     var visitedCities: Set<Int> = [0]
-    var unlockedSkins: Set<SkinID> = [.classic, .kraft]
+    var unlockedSkins: Set<SkinID> = PlayerProgress.startingSkins
     var unlockedDifficulties: Set<DifficultyID> = [.breezy, .standard]
     /// City indices whose airport you can depart from.
     var unlockedAirports: Set<Int> = [0]
@@ -18,6 +18,58 @@ nonisolated struct PlayerProgress: Codable, Equatable, Sendable {
     var totalDistance: Double = 0
     var runsPlayed = 0
     var completedLaps = 0
+
+    /// Skins every player starts with, plus the developer-only ones in Debug builds.
+    static let startingSkins: Set<SkinID> = Set([SkinID.classic, .kraft] + PlaneSkin.developerOnly.map(\.id))
+
+    enum CodingKeys: String, CodingKey {
+        case visitedCities, unlockedSkins, unlockedDifficulties, unlockedAirports, journal
+        case bestScore, bestDistance, mostCitiesInRun, totalStars, totalDistance, runsPlayed, completedLaps
+    }
+}
+
+extension PlayerProgress {
+    /// Reads a save from any older or damaged version: a missing or unreadable field keeps its
+    /// default, unknown skins and difficulties are dropped, and the result is made valid.
+    nonisolated init(from decoder: Decoder) throws {
+        self.init()
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func field<T: Decodable>(_ key: CodingKeys, _ fallback: T) -> T {
+            (try? c.decodeIfPresent(T.self, forKey: key)) ?? fallback
+        }
+        visitedCities = field(.visitedCities, visitedCities)
+        unlockedSkins = Set(field(.unlockedSkins, [String]()).compactMap(SkinID.init(rawValue:)))
+        unlockedDifficulties = Set(field(.unlockedDifficulties, [String]()).compactMap(DifficultyID.init(rawValue:)))
+        unlockedAirports = field(.unlockedAirports, unlockedAirports)
+        journal = field(.journal, journal)
+        bestScore = field(.bestScore, 0)
+        bestDistance = field(.bestDistance, 0)
+        mostCitiesInRun = field(.mostCitiesInRun, 0)
+        totalStars = field(.totalStars, 0)
+        totalDistance = field(.totalDistance, 0)
+        runsPlayed = field(.runsPlayed, 0)
+        completedLaps = field(.completedLaps, 0)
+        normalize()
+    }
+
+    /// Drops out-of-range cities, keeps the starting unlocks, and clamps counters to sane values.
+    nonisolated mutating func normalize() {
+        let valid = 0..<Route.count
+        visitedCities = Set(visitedCities.filter(valid.contains)).union([0])
+        unlockedAirports = Set(unlockedAirports.filter(valid.contains)).union([0])
+        // Keep only skins this build lists (a developer-only skin saved by a Debug build is dropped
+        // in Release), then add the starting ones back.
+        unlockedSkins = unlockedSkins.filter { id in PlaneSkin.all.contains { $0.id == id } }
+        unlockedSkins.formUnion(Self.startingSkins)
+        unlockedDifficulties.formUnion([.breezy, .standard])
+        bestScore = max(0, bestScore)
+        bestDistance = bestDistance.isFinite ? max(0, bestDistance) : 0
+        totalDistance = totalDistance.isFinite ? max(0, totalDistance) : 0
+        mostCitiesInRun = max(0, mostCitiesInRun)
+        totalStars = max(0, totalStars)
+        runsPlayed = max(0, runsPlayed)
+        completedLaps = max(0, completedLaps)
+    }
 }
 
 /// Summary of a finished run, shown on the game-over card.

@@ -27,7 +27,7 @@ for name, x0, x1, hinge in [
 
 C.MeshBuilder().card_xz([(-0.79, 2.17), (0.80, 2.20), (0.74, 2.58), (-0.76, 2.60)],
                         y=-0.095, thickness=0.05) \
-    .to_object("Sign", C.flat_material("SignMat", C.INK["red"]))
+    .to_object("Sign", C.flat_material("SignMat", C.INK["ink"]))
 C.MeshBuilder().box((1.47, 0.026, 2.01), center=(0, 0.095, 1.005)) \
     .to_object("Glow", C.flat_material("BackingMat", C.INK["cream"]))
 

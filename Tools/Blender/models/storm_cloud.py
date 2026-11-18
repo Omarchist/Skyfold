@@ -46,11 +46,11 @@ cloud = C.MeshBuilder()
 # (outline, depth, lean, yaw): the back layer tips toward the camera and the
 # front one away from it, so each takes the light differently.
 for outline, y, lean, yaw in [
-    (BACK, 0.42, -6.0, 3.0),
-    (MIDDLE, 0.0, 2.0, -2.5),
-    (FRONT, -0.42, 9.0, 4.0),
+    (BACK, 0.42, -11.0, 3.0),
+    (MIDDLE, 0.0, 3.0, -2.5),
+    (FRONT, -0.42, 13.0, 5.0),
 ]:
-    cloud.card_xz(C.scalloped(outline), y=y, thickness=0.022,
+    cloud.card_xz(C.scalloped(outline), y=y, thickness=0.034,
                   lean=lean + rnd.uniform(-1.0, 1.0), yaw=yaw + rnd.uniform(-0.8, 0.8))
 # Paper struts between the layers (the tabs of a pop-up).
 cloud.box((0.075, 0.41, 0.012), center=(-0.12, -0.21, -0.11), rot=(0, 14, 3))

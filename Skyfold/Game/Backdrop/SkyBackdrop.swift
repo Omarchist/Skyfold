@@ -5,6 +5,10 @@ import SwiftUI
 final class BackdropClock {
     var scroll: Double = 0   // meters flown this run
     var speed: Float = 0     // m/s
+    /// The sky's own smooth nightness (0 day ... 1 night), written every frame by the flight engine.
+    /// Negative = not driven; the backdrop then uses the palette it was given. Because the Canvas
+    /// reads it on its own timeline, the sky stays smooth without any SwiftUI state changing.
+    var nightness: Double = -1
     init() {}
 }
 
@@ -41,10 +45,11 @@ struct SkyBackdrop: View {
     }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: quality == .low ? 1.0 / 30.0 : 1.0 / 60.0, paused: paused)) { timeline in
+        TimelineView(.animation(minimumInterval: quality == .low ? 1.0 / 30.0 : 1.0 / 120.0, paused: paused)) { timeline in
             let time = timeline.date.timeIntervalSinceReferenceDate
+            let skyPalette = clock.nightness >= 0 ? Palette.at(nightness: (clock.nightness * 200).rounded() / 200) : palette
             Canvas(opaque: true) { context, size in
-                painter.draw(into: &context, size: size, time: time, palette: palette, clock: clock,
+                painter.draw(into: &context, size: size, time: time, palette: skyPalette, clock: clock,
                              quality: quality, horizonFraction: horizonFraction, reduceMotion: reduceMotion)
             }
         }
@@ -111,10 +116,10 @@ struct BackdropColors {
         crater = flat(p.sun.mixed(with: deep, 0.13).withAlpha(moonness))
         drawCraters = moonness > 0.02
 
-        let farHill = p.groundFar
-        let nearHill = p.ground.mixed(with: deep, 0.12)
+        let farHill = p.printGroundFar
+        let nearHill = p.printGround.mixed(with: deep, 0.12)
         hillFar = flat(farHill)
-        hillMid = flat(farHill.mixed(with: p.ground, 0.5))
+        hillMid = flat(farHill.mixed(with: p.printGround, 0.5))
         hillNear = flat(nearHill)
         let shadow = flat(deep.withAlpha(shadowAlpha))
         shadowFar = shadow
@@ -132,7 +137,7 @@ struct BackdropColors {
         windowDark = flat(deep.withAlpha(0.13 * (1 - min(max(p.windowGlow, 0), 1))))
         drawDarkWindows = p.windowGlow < 0.98
 
-        ground = flat(p.ground)
+        ground = flat(p.printGround)
     }
 }
 

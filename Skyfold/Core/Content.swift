@@ -13,7 +13,7 @@ nonisolated enum Unlock: Hashable, Codable, Sendable {
         switch self {
         case .skin(let id): "\(PlaneSkin.get(id).name) skin"
         case .difficulty(let id): "\(Difficulty.get(id).name) mode"
-        case .airport(let i): "\(Route.cities[i].name) airport"
+        case .airport(let i): "\(Route.city(i).name) airport"
         }
     }
 
@@ -130,19 +130,33 @@ nonisolated struct LegPlan: Equatable, Sendable {
         startSpeed + (endSpeed - startSpeed) * Float(min(max(p, 0), 1))
     }
 
+    /// Metres of landscape the side camera shows ahead of the plane.
+    static let visibleAhead: Float = 23
+    /// Least warning (s) a player gets before something shown at the edge of the view arrives.
+    static let minWarningTime: Float = 0.8
+    /// No leg is flown faster than this, whatever the difficulty and however many Headwinds were taken:
+    /// `visibleAhead / minWarningTime`.
+    static let speedLimit: Float = visibleAhead / minWarningTime
+    /// Shortest leg (m) before the debug scale; stacked Shortcuts cannot shrink a leg below it.
+    static let minLength: Double = 300
+    /// Bounds on seconds per lane move, so stacked Nimble Creases or Soggy Papers stay playable.
+    static let laneSwitchRange: ClosedRange<Float> = 0.06...0.4
+
     static func plan(fromRoute: Int, legsCompleted: Int, startRoute: Int,
                      difficulty: Difficulty, tuning: RunTuning) -> LegPlan {
         // "Tier" grows with every leg flown, with later departure airports, and with each lap.
         let tier = Float(legsCompleted) + Float(startRoute) * 0.5 + Float(Route.lap(fromRoute)) * 2
-        let cap = difficulty.maxSpeed * tuning.speed
+        let cap = min(difficulty.maxSpeed * tuning.speed, speedLimit)
         let start = min((difficulty.baseSpeed + difficulty.speedPerLeg * tier) * tuning.speed, cap)
         let end = min(start + difficulty.speedRampInLeg * tuning.speed, cap)
-        let length = (700 + 220 * Double(legsCompleted) + 60 * Double(startRoute))
-            * difficulty.legLengthScale * tuning.legLength * DebugFlags.legLengthScale
+        let planned = (700 + 220 * Double(legsCompleted) + 60 * Double(startRoute))
+            * difficulty.legLengthScale * tuning.legLength
+        let length = max(planned, minLength) * DebugFlags.legLengthScale
         let density = difficulty.density * tuning.density * (1 + 0.06 * tier)
         return LegPlan(fromRoute: fromRoute, toRoute: fromRoute + 1, length: length,
                        startSpeed: start, endSpeed: end, density: density,
-                       laneSwitchTime: difficulty.laneSwitchTime * tuning.laneSwitchTime)
+                       laneSwitchTime: min(max(difficulty.laneSwitchTime * tuning.laneSwitchTime,
+                                                laneSwitchRange.lowerBound), laneSwitchRange.upperBound))
     }
 }
 
@@ -197,14 +211,23 @@ nonisolated struct Difficulty: Identifiable, Sendable {
                    allowsSecondChances: false),
     ]
 
-    static func get(_ id: DifficultyID) -> Difficulty { all.first { $0.id == id }! }
+    static func get(_ id: DifficultyID) -> Difficulty { all.first { $0.id == id } ?? all[1] }
 }
 
 // MARK: - Plane skins
 
 nonisolated enum SkinID: String, CaseIterable, Codable, Identifiable, Sendable {
-    case classic, kraft, newsprint, saffron, monsoon, sakura, hibiscus, goldLeaf, midnight
+    case classic, kraft, newsprint, saffron, monsoon, sakura, hibiscus, goldLeaf, midnight, interceptor
     var id: String { rawValue }
+}
+
+/// Which model a skin flies.
+nonisolated enum Aircraft: Sendable {
+    case paperPlane, jet
+
+    var model: ModelName { self == .jet ? .jet : .plane }
+    /// Multiplier that makes the model's footprint match the paper plane's (about 0.9 m long).
+    var footprintScale: Float { self == .jet ? 0.8 : 1 }
 }
 
 nonisolated struct PlaneSkin: Identifiable, Sendable {
@@ -217,6 +240,8 @@ nonisolated struct PlaneSkin: Identifiable, Sendable {
     /// Speed-trail color.
     let trail: RGBA
     let unlockHint: String
+    /// The model this skin flies. "Paper" and "Crease" parts take `paper` and `crease`.
+    var aircraft: Aircraft = .paperPlane
 
     static let all: [PlaneSkin] = [
         PlaneSkin(id: .classic, name: "Classic", paper: RGBA(hex: 0xFFFDF8), crease: RGBA(hex: 0xE9DCC8),
@@ -235,9 +260,24 @@ nonisolated struct PlaneSkin: Identifiable, Sendable {
                   trail: RGBA(hex: 0xFFB0A6), unlockHint: "Land in Honolulu."),
         PlaneSkin(id: .goldLeaf, name: "Gold Leaf", paper: RGBA(hex: 0xF2CB6B), crease: RGBA(hex: 0xB8902F),
                   trail: RGBA(hex: 0xFFE7A3), unlockHint: "Land in New York."),
-        PlaneSkin(id: .midnight, name: "Midnight Ink", paper: RGBA(hex: 0x2B2850), crease: RGBA(hex: 0x7CF2C8),
-                  trail: RGBA(hex: 0x7CF2C8), unlockHint: "Land back in Lisbon after a full lap."),
-    ]
+        PlaneSkin(id: .midnight, name: "Midnight Ink", paper: RGBA(hex: 0x2B2850), crease: RGBA(hex: 0xE4DCCB),
+                  trail: RGBA(hex: 0xE5A03A), unlockHint: "Land back in Lisbon after a full lap."),
+    ] + developerOnly
 
-    static func get(_ id: SkinID) -> PlaneSkin { all.first { $0.id == id }! }
+    /// The F-15 fighter jet (Tools/Blender/jet). Defined in every build, but listed only for
+    /// developers (see `developerOnly`). Boeing licenses the F-15 name and likeness for games, so
+    /// rename it or license it before this skin ever ships in a Release build.
+    static let interceptor = PlaneSkin(id: .interceptor, name: "F-15", paper: RGBA(hex: 0x9AA0A8),
+                                       crease: RGBA(hex: 0x5E646C), trail: RGBA(hex: 0xDADDE0),
+                                       unlockHint: "Standard issue.", aircraft: .jet)
+
+    /// Skins only developers get: Debug builds (run from Xcode) list and unlock them, Release
+    /// builds (TestFlight and the App Store) leave them out, and a saved choice falls back to Classic.
+    #if DEBUG
+    static let developerOnly: [PlaneSkin] = [interceptor]
+    #else
+    static let developerOnly: [PlaneSkin] = []
+    #endif
+
+    static func get(_ id: SkinID) -> PlaneSkin { all.first { $0.id == id } ?? all[0] }
 }

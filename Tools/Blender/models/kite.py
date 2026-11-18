@@ -37,7 +37,7 @@ for i in range(4):
     faces.append([i, j, j + 5, i + 5])
 sail = C.MeshBuilder().poly(verts, faces)
 sail.transform(place)
-sail.to_object("Sail", C.flat_material("SailMat", "#FF7A45"))
+sail.to_object("Sail", C.flat_material("SailMat", C.INK["red"]))
 
 # Spars: the classic cross, sitting on the camera side of the sail.
 lift = Vector((0, -0.014, 0))
@@ -57,7 +57,7 @@ tail_pts = [bottom,
             bottom + Vector((-0.50, 0.0, -0.28))]
 for a, b in zip(tail_pts, tail_pts[1:]):
     spar.rod(a, b, 0.006, segments=3)
-spar.to_object("Spar", C.flat_material("SparMat", "#6B4E3D"))
+spar.to_object("Spar", C.flat_material("SparMat", C.INK["ink"]))
 
 bows = C.MeshBuilder()
 for i, t in enumerate((1, 2, 3)):
@@ -71,7 +71,7 @@ for i, t in enumerate((1, 2, 3)):
         bows.slab([tuple(v + Vector((0, -0.006, 0))) for v in tri], 0.012,
                   direction=(0, -1, 0))
     bows.box((0.028, 0.026, 0.028), center=tuple(p + Vector((0, -0.006, 0))), rot=(0, 30, 0))
-bows.to_object("Tail", C.flat_material("TailMat", "#FFD166"))
+bows.to_object("Tail", C.flat_material("TailMat", C.INK["ochre"]))
 
 C.recenter("center")
 C.export_usdz("kite")

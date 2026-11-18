@@ -179,7 +179,7 @@ def folded_roof(width, depth, bottom, top, ridge_y=0.0):
 
 def export_building(name, wall, window, roof):
     wall.to_object("Wall", C.flat_material("WallMat", C.INK["wall"]), recalc=False)
-    window.to_object("Window", C.flat_material("WindowMat", C.INK["ink"]), recalc=False)
+    window.to_object("Window", C.flat_material("WindowMat", C.INK["amber"]), recalc=False)
     roof.to_object("Roof", C.flat_material("RoofMat", C.INK["roof"]))
     C.recenter("bottom")
     C.export_usdz(name, max_tris=C.BUILDING_TRI_BUDGET)

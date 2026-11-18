@@ -92,17 +92,18 @@ struct MainMenuView: View {
 
                 VStack(spacing: 0) {
                     ScrollView {
-                        VStack(spacing: 14) {
-                            MenuBoardingPass(settings: model.settings, progress: model.progress,
-                                             compact: true, openPicker: openPicker)
-                                .rotationEffect(.degrees(-0.9))
-                            flyButton
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.top, 8)
-                        .padding(.bottom, 12)
+                        MenuBoardingPass(settings: model.settings, progress: model.progress,
+                                         compact: true, openPicker: openPicker)
+                            .rotationEffect(.degrees(-0.9))
+                            .padding(.horizontal, 12)
+                            .padding(.top, 8)
+                            .padding(.bottom, 10)
                     }
                     .scrollBounceBehavior(.basedOnSize)
+                    // Fly stays put above the sign; a short phone scrolls the pass, never the key.
+                    flyButton
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 10)
                     MenuSignBar(items: signItems)
                 }
                 .frame(width: min(430, geo.size.width * 0.47))
@@ -122,9 +123,10 @@ struct MainMenuView: View {
                     .foregroundStyle(palette.ink.color)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
+                    .limitedTypeSize()
                     .accessibilityAddTraits(.isHeader)
                 Spacer(minLength: 4)
-                ParAvionLabel()
+                ParAvionLabel().limitedTypeSize()
                     .rotationEffect(.degrees(-4))
                     .padding(.top, landscape ? 4 : 12)
             }
@@ -135,6 +137,7 @@ struct MainMenuView: View {
             Text("One sheet of paper. Ten cities.")
                 .font(.display(landscape ? 14 : 16, weight: .regular).italic())
                 .foregroundStyle(palette.inkSoft.color)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -142,14 +145,13 @@ struct MainMenuView: View {
         let skin = PlaneSkin.get(model.settings.selectedSkin)
         return Group {
             if planeLive {
-                PlanePreviewView(skin: skin, nightness: night)
+                PlanePreviewView(skin: skin, nightness: night, interactive: true)
                     .transition(.opacity)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { stage = $0 }
-        .allowsHitTesting(false)
-        .accessibilityElement(children: .ignore)
+        .accessibilityElement(children: .combine)
         .accessibilityLabel("A paper plane, \(skin.name)")
     }
 
@@ -163,6 +165,7 @@ struct MainMenuView: View {
             }
         }
         .buttonStyle(PrimaryButtonStyle(size: .large, fullWidth: true))
+        .limitedTypeSize()
         .accessibilityLabel("Fly")
         .accessibilityHint("Starts a flight from \(Route.city(model.settings.selectedAirport).name)")
     }
@@ -234,6 +237,12 @@ struct MainMenuView: View {
             library = screen
         }
         #if DEBUG
+        // Screenshots only: -SkyfoldStartAirport N (with -SkyfoldUnlockAll YES) starts a run from route N.
+        if UserDefaults.standard.object(forKey: "SkyfoldStartAirport") != nil {
+            model.settings.selectedAirport = UserDefaults.standard.integer(forKey: "SkyfoldStartAirport")
+            model.startRun()
+            return
+        }
         // Screenshots only: -SkyfoldMenuPicker airport|difficulty|skin opens that list.
         if let raw = UserDefaults.standard.string(forKey: "SkyfoldMenuPicker"),
            let kind = MenuPickerKind(rawValue: raw) {
